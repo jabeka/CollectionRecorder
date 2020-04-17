@@ -169,7 +169,8 @@ private:
 
 //==============================================================================
 class RecordingThumbnail  : public Component,
-                            private ChangeListener
+                            private ChangeListener/*,
+                            public MenuBarModel*/
 {
 public:
     RecordingThumbnail()
@@ -234,14 +235,6 @@ public:
     AudioRecordingDemo()
     {
         setOpaque (true);
-        addAndMakeVisible (liveAudioScroller);
-
-        addAndMakeVisible (explanationLabel);
-        explanationLabel.setFont (Font (15.0f, Font::plain));
-        explanationLabel.setJustificationType (Justification::topLeft);
-        explanationLabel.setEditable (false, false, false);
-        explanationLabel.setColour (TextEditor::textColourId, Colours::black);
-        explanationLabel.setColour (TextEditor::backgroundColourId, Colour (0x00000000));
 
         addAndMakeVisible (recordButton);
         recordButton.setColour (TextButton::buttonColourId, Colour (0xffff5c5c));
@@ -266,7 +259,6 @@ public:
                                      });
        #endif
 
-        audioDeviceManager.addAudioCallback (&liveAudioScroller);
         audioDeviceManager.addAudioCallback (&recorder);
 
         setSize (500, 500);
@@ -275,7 +267,6 @@ public:
     ~AudioRecordingDemo() override
     {
         audioDeviceManager.removeAudioCallback (&recorder);
-        audioDeviceManager.removeAudioCallback (&liveAudioScroller);
     }
 
     void paint (Graphics& g) override
@@ -287,10 +278,8 @@ public:
     {
         auto area = getLocalBounds();
 
-        liveAudioScroller .setBounds (area.removeFromTop (80).reduced (8));
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
         recordButton      .setBounds (area.removeFromTop (36).removeFromLeft (140).reduced (8));
-        explanationLabel  .setBounds (area.reduced (8));
     }
 
 private:
@@ -301,17 +290,9 @@ private:
     AudioDeviceManager& audioDeviceManager { getSharedAudioDeviceManager (1, 0) };
    #endif
 
-    LiveScrollingAudioDisplay liveAudioScroller;
     RecordingThumbnail recordingThumbnail;
     AudioRecorder recorder  { recordingThumbnail.getAudioThumbnail() };
 
-    Label explanationLabel  { {}, "This page demonstrates how to record a wave file from the live audio input..\n\n"
-                                 #if (JUCE_ANDROID || JUCE_IOS)
-                                  "After you are done with your recording you can share with other apps."
-                                 #else
-                                  "Pressing record will start recording a file in your \"Documents\" folder."
-                                 #endif
-                             };
     TextButton recordButton { "Record" };
     File lastRecording;
 
