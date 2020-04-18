@@ -67,20 +67,24 @@ public:
     ~AudioRecorder() override
     {
         stop();
+        if (isSilence)
+        {
+            currentFile.deleteFile();
+        }
     }
 
     //==============================================================================
     void startRecording ()
     {
         stop();
-        auto file = getNextFile();
+        currentFile = getNextFile();
 
         if (sampleRate > 0)
         {
             // Create an OutputStream to write to our destination file...
-            file.deleteFile();
+            currentFile.deleteFile();
 
-            if (auto fileStream = std::unique_ptr<FileOutputStream> (file.createOutputStream()))
+            if (auto fileStream = std::unique_ptr<FileOutputStream> (currentFile.createOutputStream()))
             {
                 // Now create a WAV writer object that writes to our output stream...
                 FlacAudioFormat flacFormat;
@@ -98,7 +102,7 @@ public:
                     nextSampleNum = 0;
 
                     // And now, swap over our active writer pointer so that the audio callback will start using it..
-                    const ScopedLock sl (writerLock);
+                    const ScopedLock sl(writerLock);
                     activeWriter = threadedWriter.get();
                 }
             }
@@ -119,11 +123,6 @@ public:
         threadedWriter.reset();
     }
 
-    bool isRecording() const
-    {
-        return activeWriter.load() != nullptr;
-    }
-
     //==============================================================================
     void audioDeviceAboutToStart (AudioIODevice* device) override
     {
@@ -135,7 +134,6 @@ public:
         sampleRate = 0;
     }
 
-
     #define SILENCE_THRESHOLD_SECOND 3
 
     void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
@@ -145,15 +143,29 @@ public:
         const ScopedLock sl (writerLock);
         silenceThreshold = (sampleRate / numSamples) * SILENCE_THRESHOLD_SECOND;
 
-        if (activeWriter.load() != nullptr && numInputChannels >= thumbnail.getNumChannels())
-        {
-            activeWriter.load()->write (inputChannelData, numSamples);
+        // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
+        AudioBuffer<float> buffer(const_cast<float**> (inputChannelData), numInputChannels, numSamples);
+        computeRMSLevel(buffer, numInputChannels, numSamples);
 
-            // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
-            AudioBuffer<float> buffer (const_cast<float**> (inputChannelData), numInputChannels, numSamples);
-            thumbnail.addBlock (nextSampleNum, buffer, 0, numSamples);
+        if (activeWriter.load() != nullptr)
+        {
+            if (isSilence && RMSAaverageLevel > 0.01)
+            {
+                isSilence = false;
+            }
+
+            if (!isSilence)
+            {
+                activeWriter.load()->write(inputChannelData, numSamples);
+                detectSilence(buffer, numInputChannels, numSamples);
+            }
+        }
+
+        // handle display
+        if (numInputChannels >= thumbnail.getNumChannels())
+        {
+            thumbnail.addBlock(nextSampleNum, buffer, 0, numSamples);
             nextSampleNum += numSamples;
-            handleSilence(buffer, numInputChannels, numSamples);
         }
 
         // We need to clear the output buffers, in case they're full of junk..
@@ -161,6 +173,8 @@ public:
             if (outputChannelData[i] != nullptr)
                 FloatVectorOperations::clear (outputChannelData[i], numSamples);
     }
+
+    std::atomic<bool> shouldRestart = false;
 
 private:
 
@@ -177,15 +191,18 @@ private:
         return documentsDir.getNonexistentChildFile("Tune ", ".wav");
     }
 
-    void handleSilence(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+    void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+{
+    RMSAaverageLevel = 0;
+    for (size_t i = 0; i < numInputChannels; i++)
     {
-        RMSAaverageLevel = 0;
-        for (size_t i = 0; i < numInputChannels; i++)
-        {
-            RMSAaverageLevel.store(RMSAaverageLevel.load() + buffer.getRMSLevel(i, 0, numSamples));
-        }
-        RMSAaverageLevel.store(RMSAaverageLevel.load() / numInputChannels);
+        RMSAaverageLevel += buffer.getRMSLevel(i, 0, numSamples);
+    }
+    RMSAaverageLevel /= numInputChannels;
+}
 
+    void detectSilence(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+    {
         if (RMSAaverageLevel < 0.01)
         {
             silenceCount++;
@@ -198,11 +215,12 @@ private:
         if (silenceCount > silenceThreshold) {
             silenceCount = 0;
             // restart
-            startRecording();
+            isSilence = true;
+            shouldRestart = true;
         }
     }
 
-
+    File currentFile;
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread { "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
@@ -211,9 +229,10 @@ private:
 
     CriticalSection writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter { nullptr };
-    std::atomic<float> RMSAaverageLevel = 0;
-    std::atomic<int> silenceCount = 0;
-    std::atomic<int> silenceThreshold = 10000;
+    float RMSAaverageLevel = 0;
+    int silenceCount = 0;
+    int silenceThreshold = 10000;
+    bool isSilence = true;
 };
 
 //==============================================================================
@@ -277,7 +296,8 @@ private:
 };
 
 //==============================================================================
-class AudioRecordingDemo  : public Component
+class AudioRecordingDemo  : public Component,
+                            private Timer
 {
 public:
     AudioRecordingDemo()
@@ -352,33 +372,17 @@ private:
         recorder.startRecording ();
 
         recordingThumbnail.setDisplayFullThumbnail (false);
+
+        startTimer(10);
     }
 
-    void stopRecording()
+    void timerCallback() override
     {
-        recorder.stop();
-
-       #if (JUCE_ANDROID || JUCE_IOS)
-        SafePointer<AudioRecordingDemo> safeThis (this);
-        File fileToShare = lastRecording;
-
-        ContentSharer::getInstance()->shareFiles (Array<URL> ({URL (fileToShare)}),
-                                                  [safeThis, fileToShare] (bool success, const String& error)
-                                                  {
-                                                      if (fileToShare.existsAsFile())
-                                                          fileToShare.deleteFile();
-
-                                                      if (! success && error.isNotEmpty())
-                                                      {
-                                                          NativeMessageBox::showMessageBoxAsync (AlertWindow::WarningIcon,
-                                                                                                 "Sharing Error",
-                                                                                                 error);
-                                                      }
-                                                  });
-       #endif
-
-        lastRecording = File();
-        recordingThumbnail.setDisplayFullThumbnail (true);
+        if (recorder.shouldRestart)
+        {
+            recorder.startRecording(); // sets up the new file in advance        
+            recorder.shouldRestart = false;
+        }
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
