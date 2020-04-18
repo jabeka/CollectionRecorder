@@ -28,7 +28,7 @@ private:
         MainWindow (const String& name, Component* c, JUCEApplication& a)
             : DocumentWindow (name, Desktop::getInstance().getDefaultLookAndFeel()
                                                           .findColour (ResizableWindow::backgroundColourId),
-                              DocumentWindow::allButtons),
+                              DocumentWindow::closeButton),
               app (a)
         {
             setUsingNativeTitleBar (true);
@@ -37,8 +37,8 @@ private:
            #if JUCE_ANDROID || JUCE_IOS
             setFullScreen (true);
            #else
-            setResizable (true, false);
-            setResizeLimits (300, 250, 10000, 10000);
+            setResizable (false, false);
+            setSize (300, 96);
             centreWithSize (getWidth(), getHeight());
            #endif
 

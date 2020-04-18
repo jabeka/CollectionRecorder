@@ -70,9 +70,10 @@ public:
     }
 
     //==============================================================================
-    void startRecording (const File& file)
+    void startRecording ()
     {
         stop();
+        auto file = getNextFile();
 
         if (sampleRate > 0)
         {
@@ -82,9 +83,9 @@ public:
             if (auto fileStream = std::unique_ptr<FileOutputStream> (file.createOutputStream()))
             {
                 // Now create a WAV writer object that writes to our output stream...
-                WavAudioFormat wavFormat;
+                FlacAudioFormat flacFormat;
 
-                if (auto writer = wavFormat.createWriterFor (fileStream.get(), sampleRate, 1, 16, {}, 0))
+                if (auto writer = flacFormat.createWriterFor (fileStream.get(), sampleRate, 2, 16, {}, 0))
                 {
                     fileStream.release(); // (passes responsibility for deleting the stream to the writer object that is now using it)
 
@@ -134,20 +135,25 @@ public:
         sampleRate = 0;
     }
 
+
+    #define SILENCE_THRESHOLD_SECOND 3
+
     void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
                                 float** outputChannelData, int numOutputChannels,
                                 int numSamples) override
     {
         const ScopedLock sl (writerLock);
+        silenceThreshold = (sampleRate / numSamples) * SILENCE_THRESHOLD_SECOND;
 
         if (activeWriter.load() != nullptr && numInputChannels >= thumbnail.getNumChannels())
         {
             activeWriter.load()->write (inputChannelData, numSamples);
 
             // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
-            AudioBuffer<float> buffer (const_cast<float**> (inputChannelData), thumbnail.getNumChannels(), numSamples);
+            AudioBuffer<float> buffer (const_cast<float**> (inputChannelData), numInputChannels, numSamples);
             thumbnail.addBlock (nextSampleNum, buffer, 0, numSamples);
             nextSampleNum += numSamples;
+            handleSilence(buffer, numInputChannels, numSamples);
         }
 
         // We need to clear the output buffers, in case they're full of junk..
@@ -157,6 +163,46 @@ public:
     }
 
 private:
+
+    File getNextFile()
+    {
+#if (JUCE_ANDROID || JUCE_IOS)
+        auto parentDir = File::getSpecialLocation(File::tempDirectory);
+#else
+        auto documentsDir = File(File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + "\\CollectionRecorder");
+#endif
+
+        documentsDir.createDirectory();
+
+        return documentsDir.getNonexistentChildFile("Tune ", ".wav");
+    }
+
+    void handleSilence(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+    {
+        RMSAaverageLevel = 0;
+        for (size_t i = 0; i < numInputChannels; i++)
+        {
+            RMSAaverageLevel.store(RMSAaverageLevel.load() + buffer.getRMSLevel(i, 0, numSamples));
+        }
+        RMSAaverageLevel.store(RMSAaverageLevel.load() / numInputChannels);
+
+        if (RMSAaverageLevel < 0.01)
+        {
+            silenceCount++;
+        }
+        else
+        {
+            silenceCount = 0;
+        }
+
+        if (silenceCount > silenceThreshold) {
+            silenceCount = 0;
+            // restart
+            startRecording();
+        }
+    }
+
+
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread { "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
@@ -165,12 +211,14 @@ private:
 
     CriticalSection writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter { nullptr };
+    std::atomic<float> RMSAaverageLevel = 0;
+    std::atomic<int> silenceCount = 0;
+    std::atomic<int> silenceThreshold = 10000;
 };
 
 //==============================================================================
 class RecordingThumbnail  : public Component,
-                            private ChangeListener/*,
-                            public MenuBarModel*/
+                            private ChangeListener
 {
 public:
     RecordingThumbnail()
@@ -235,21 +283,8 @@ public:
     AudioRecordingDemo()
     {
         setOpaque (true);
-
-        addAndMakeVisible (recordButton);
-        recordButton.setColour (TextButton::buttonColourId, Colour (0xffff5c5c));
-        recordButton.setColour (TextButton::textColourOnId, Colours::black);
-
-        recordButton.onClick = [this]
-        {
-            if (recorder.isRecording())
-                stopRecording();
-            else
-                startRecording();
-        };
-
         addAndMakeVisible (recordingThumbnail);
-
+        
        #ifndef JUCE_DEMO_RUNNER
         RuntimePermissions::request (RuntimePermissions::recordAudio,
                                      [this] (bool granted)
@@ -258,10 +293,13 @@ public:
                                          audioDeviceManager.initialise (numInputChannels, 2, nullptr, true, {}, nullptr);
                                      });
        #endif
+      
 
         audioDeviceManager.addAudioCallback (&recorder);
 
-        setSize (500, 500);
+        setSize(300, 80);
+
+        startRecording();
     }
 
     ~AudioRecordingDemo() override
@@ -279,7 +317,6 @@ public:
         auto area = getLocalBounds();
 
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
-        recordButton      .setBounds (area.removeFromTop (36).removeFromLeft (140).reduced (8));
     }
 
 private:
@@ -293,7 +330,6 @@ private:
     RecordingThumbnail recordingThumbnail;
     AudioRecorder recorder  { recordingThumbnail.getAudioThumbnail() };
 
-    TextButton recordButton { "Record" };
     File lastRecording;
 
     void startRecording()
@@ -311,17 +347,10 @@ private:
             return;
         }
 
-       #if (JUCE_ANDROID || JUCE_IOS)
-        auto parentDir = File::getSpecialLocation (File::tempDirectory);
-       #else
-        auto parentDir = File::getSpecialLocation (File::userDocumentsDirectory);
-       #endif
+ 
 
-        lastRecording = parentDir.getNonexistentChildFile ("JUCE Demo Audio Recording", ".wav");
+        recorder.startRecording ();
 
-        recorder.startRecording (lastRecording);
-
-        recordButton.setButtonText ("Stop");
         recordingThumbnail.setDisplayFullThumbnail (false);
     }
 
@@ -349,7 +378,6 @@ private:
        #endif
 
         lastRecording = File();
-        recordButton.setButtonText ("Record");
         recordingThumbnail.setDisplayFullThumbnail (true);
     }
 
