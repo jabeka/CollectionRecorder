@@ -136,11 +136,11 @@ public:
 
     #define SILENCE_THRESHOLD_SECOND 3
 
-    void audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
-                                float** outputChannelData, int numOutputChannels,
-                                int numSamples) override
+    void audioDeviceIOCallback(const float** inputChannelData, int numInputChannels,
+        float** outputChannelData, int numOutputChannels,
+        int numSamples) override
     {
-        const ScopedLock sl (writerLock);
+        const ScopedLock sl(writerLock);
         silenceThreshold = (sampleRate / numSamples) * SILENCE_THRESHOLD_SECOND;
 
         // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
@@ -168,10 +168,19 @@ public:
             nextSampleNum += numSamples;
         }
 
-        // We need to clear the output buffers, in case they're full of junk..
-        for (int i = 0; i < numOutputChannels; ++i)
-            if (outputChannelData[i] != nullptr)
-                FloatVectorOperations::clear (outputChannelData[i], numSamples);
+        if (numInputChannels == numOutputChannels)
+        {
+            for (int i = 0; i < numOutputChannels; ++i)
+                for (size_t j = 0; j < numSamples; j++)
+                    outputChannelData[i][j] = inputChannelData[i][j];
+        }
+        else
+        {
+            // We need to clear the output buffers, in case they're full of junk..
+            for (int i = 0; i < numOutputChannels; ++i)
+                if (outputChannelData[i] != nullptr)
+                    FloatVectorOperations::clear(outputChannelData[i], numSamples);
+        }
     }
 
     std::atomic<bool> shouldRestart = false;
@@ -188,7 +197,7 @@ private:
 
         documentsDir.createDirectory();
 
-        return documentsDir.getNonexistentChildFile("Tune ", ".wav");
+        return documentsDir.getNonexistentChildFile("Tune", ".flac");
     }
 
     void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
