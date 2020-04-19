@@ -46,6 +46,8 @@
 
 *******************************************************************************/
 
+#define JUCE_USE_MP3AUDIOFORMAT 
+
 #pragma once
 
 #include "DemoUtilities.h"
@@ -58,6 +60,13 @@
 class AudioRecorder  : public AudioIODeviceCallback
 {
 public:
+    enum SupportedAudioFormat
+    {
+        wav = 0,
+        flac,
+        mp3
+    };
+
     AudioRecorder (AudioThumbnail& thumbnailToUpdate)
         : thumbnail (thumbnailToUpdate)
     {
@@ -73,8 +82,14 @@ public:
         }
     }
 
+    void initialize(String folder, AudioRecorder::SupportedAudioFormat format)
+    {
+        currentFolder = folder;
+        selectedFormat = format;
+    }
+
     //==============================================================================
-    void startRecording ()
+    void startRecording () 
     {
         stop();
         currentFile = getNextFile();
@@ -86,10 +101,22 @@ public:
 
             if (auto fileStream = std::unique_ptr<FileOutputStream> (currentFile.createOutputStream()))
             {
-                // Now create a WAV writer object that writes to our output stream...
-                FlacAudioFormat flacFormat;
-
-                if (auto writer = flacFormat.createWriterFor (fileStream.get(), sampleRate, 2, 16, {}, 0))
+                
+                AudioFormat* audioFormat;
+                switch (selectedFormat)
+                {
+                default:
+                case AudioRecorder::flac:
+                    audioFormat = new FlacAudioFormat();
+                    break;
+                case AudioRecorder::mp3:
+                    audioFormat = new LAMEEncoderAudioFormat(File("")); // currently not supported
+                    break;
+                case AudioRecorder::wav:
+                    audioFormat = new WavAudioFormat();
+                    break;
+                }
+                if (auto writer = audioFormat->createWriterFor (fileStream.get(), sampleRate, 2, 16, {}, 0))
                 {
                     fileStream.release(); // (passes responsibility for deleting the stream to the writer object that is now using it)
 
@@ -105,6 +132,7 @@ public:
                     const ScopedLock sl(writerLock);
                     activeWriter = threadedWriter.get();
                 }
+                delete audioFormat;
             }
         }
     }
@@ -189,15 +217,25 @@ private:
 
     File getNextFile()
     {
-#if (JUCE_ANDROID || JUCE_IOS)
-        auto parentDir = File::getSpecialLocation(File::tempDirectory);
-#else
-        auto documentsDir = File(File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + "\\CollectionRecorder");
-#endif
-
+        // @todo settings
+        auto documentsDir = File(currentFolder);
         documentsDir.createDirectory();
-
-        return documentsDir.getNonexistentChildFile("Tune", ".flac");
+        String extension = "";
+        switch (selectedFormat)
+        {
+        case AudioRecorder::wav:
+            extension = ".wav";
+            break;
+        case AudioRecorder::flac:
+            extension = ".flac";
+            break;
+        case AudioRecorder::mp3:
+            extension = ".mp3";
+            break;
+        default:
+            break;
+        }
+        return documentsDir.getNonexistentChildFile("Tune", extension);
     }
 
     void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
@@ -229,7 +267,9 @@ private:
         }
     }
 
+    String currentFolder;
     File currentFile;
+    SupportedAudioFormat selectedFormat;
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread { "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
@@ -313,6 +353,13 @@ public:
     {
         setOpaque (true);
         addAndMakeVisible (recordingThumbnail);
+
+        if (!initProperties())
+        {
+            setDefaultProperties();
+        }
+
+       recorder.initialize(applicationProperties.getUserSettings()->getValue("folder"), (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format"));
         
        #ifndef JUCE_DEMO_RUNNER
         RuntimePermissions::request (RuntimePermissions::recordAudio,
@@ -336,6 +383,38 @@ public:
         audioDeviceManager.removeAudioCallback (&recorder);
     }
 
+    // init the property file and returns whether it exists or not
+    bool initProperties ()
+    {
+        PropertiesFile::Options options;
+        options.applicationName = ProjectInfo::projectName;
+        options.folderName = ProjectInfo::projectName;
+        options.filenameSuffix = "settings";
+        options.osxLibrarySubFolder = "Application Support";
+        applicationProperties.setStorageParameters(options);
+        auto props = applicationProperties.getUserSettings();
+        auto checkValueExists = props->getValue("format");
+        return !checkValueExists.isEmpty();
+    }
+
+    void setDefaultProperties()
+    {
+        PropertiesFile* props = applicationProperties.getUserSettings();
+        props->setValue("format", AudioRecorder::SupportedAudioFormat::flac);
+
+#if (JUCE_ANDROID || JUCE_IOS)
+        auto documenfolderPathtsDir = File::getSpecialLocation(File::tempDirectory).getFullPathName() + "\\CollectionRecorder";
+#else
+        auto folderPath = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + "\\CollectionRecorder";
+#endif
+
+        props->setValue("folder", folderPath);
+
+        props->save();
+        props->reload();
+    }
+
+
     void paint (Graphics& g) override
     {
         g.fillAll (getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground));
@@ -357,7 +436,8 @@ private:
    #endif
 
     RecordingThumbnail recordingThumbnail;
-    AudioRecorder recorder  { recordingThumbnail.getAudioThumbnail() };
+    AudioRecorder recorder{ recordingThumbnail.getAudioThumbnail() };
+
 
     File lastRecording;
 
@@ -376,8 +456,6 @@ private:
             return;
         }
 
- 
-
         recorder.startRecording ();
 
         recordingThumbnail.setDisplayFullThumbnail (false);
@@ -393,6 +471,8 @@ private:
             recorder.shouldRestart = false;
         }
     }
+
+    ApplicationProperties applicationProperties;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
 };
