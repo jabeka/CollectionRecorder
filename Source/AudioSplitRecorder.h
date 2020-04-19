@@ -82,10 +82,12 @@ public:
         }
     }
 
-    void initialize(String folder, AudioRecorder::SupportedAudioFormat format)
+    void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThreshold, float silenceLength)
     {
         currentFolder = folder;
         selectedFormat = format;
+        this->RMSThreshold = rmsThreshold;
+        this->silenceLength = silenceLength;
     }
 
     //==============================================================================
@@ -167,14 +169,12 @@ public:
         sampleRate = 0;
     }
 
-    #define SILENCE_THRESHOLD_SECOND 3
-
     void audioDeviceIOCallback(const float** inputChannelData, int numInputChannels,
         float** outputChannelData, int numOutputChannels,
         int numSamples) override
     {
         const ScopedLock sl(writerLock);
-        silenceThreshold = (sampleRate / numSamples) * SILENCE_THRESHOLD_SECOND;
+        silenceThreshold = (sampleRate / numSamples) * silenceLength;
 
         // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
         AudioBuffer<float> buffer(const_cast<float**> (inputChannelData), numInputChannels, numSamples);
@@ -182,7 +182,7 @@ public:
 
         if (activeWriter.load() != nullptr)
         {
-            if (isSilence && RMSAaverageLevel > 0.01)
+            if (isSilence && RMSAaverageLevel > RMSThreshold)
             {
                 isSilence = false;
             }
@@ -256,7 +256,7 @@ private:
 
     void detectSilence(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
     {
-        if (RMSAaverageLevel < 0.01)
+        if (RMSAaverageLevel < RMSThreshold)
         {
             silenceCount++;
         }
@@ -285,6 +285,8 @@ private:
     CriticalSection writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter{ nullptr };
     std::atomic<bool> muted = false;
+    std::atomic<float> RMSThreshold;
+    std::atomic<float> silenceLength;
     float RMSAaverageLevel = 0;
     int silenceCount = 0;
     int silenceThreshold = 10000;
@@ -371,7 +373,12 @@ public:
             setDefaultProperties();
         }
 
-       recorder.initialize(applicationProperties.getUserSettings()->getValue("folder"), (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format"));
+       recorder.initialize(
+           applicationProperties.getUserSettings()->getValue("folder"),
+           (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format"),
+           applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold"),
+           applicationProperties.getUserSettings()->getDoubleValue("silenceLength")
+       );
         
        #ifndef JUCE_DEMO_RUNNER
         RuntimePermissions::request (RuntimePermissions::recordAudio,
@@ -421,6 +428,8 @@ public:
 #endif
 
         props->setValue("folder", folderPath);
+        props->setValue("RMSThreshold", 0.01);
+        props->setValue("silenceLength", 3);
 
         props->save();
         props->reload();
