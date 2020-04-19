@@ -151,6 +151,11 @@ public:
         threadedWriter.reset();
     }
 
+    void mute(bool muted)
+    {
+        this->muted = muted;
+    }
+
     //==============================================================================
     void audioDeviceAboutToStart (AudioIODevice* device) override
     {
@@ -196,7 +201,7 @@ public:
             nextSampleNum += numSamples;
         }
 
-        if (numInputChannels == numOutputChannels)
+        if (numInputChannels == numOutputChannels && !muted)
         {
             for (int i = 0; i < numOutputChannels; ++i)
                 for (size_t j = 0; j < numSamples; j++)
@@ -208,6 +213,7 @@ public:
             for (int i = 0; i < numOutputChannels; ++i)
                 if (outputChannelData[i] != nullptr)
                     FloatVectorOperations::clear(outputChannelData[i], numSamples);
+            
         }
     }
 
@@ -277,7 +283,8 @@ private:
     int64 nextSampleNum = 0;
 
     CriticalSection writerLock;
-    std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter { nullptr };
+    std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter{ nullptr };
+    std::atomic<bool> muted = false;
     float RMSAaverageLevel = 0;
     int silenceCount = 0;
     int silenceThreshold = 10000;
@@ -346,13 +353,18 @@ private:
 
 //==============================================================================
 class AudioRecordingDemo  : public Component,
-                            private Timer
+                            private Timer,
+                            public Button::Listener
 {
 public:
     AudioRecordingDemo()
+        : muteButton("mute")
     {
         setOpaque (true);
+        addAndMakeVisible (muteButton);
         addAndMakeVisible (recordingThumbnail);
+
+        muteButton.addListener(this);
 
         if (!initProperties())
         {
@@ -425,6 +437,7 @@ public:
         auto area = getLocalBounds();
 
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
+        muteButton.setBounds(area.removeFromLeft(50).removeFromTop(50));
     }
 
 private:
@@ -472,7 +485,25 @@ private:
         }
     }
 
+
+
+    void buttonClicked(Button* button) override
+    {
+        // no need to check wich button as there is only one
+        if (button->getButtonText() == "mute")
+        {
+            button->setButtonText("unmute");
+            recorder.mute(true);
+        }
+        else if (button->getButtonText() == "unmute")
+        {
+            button->setButtonText("mute");
+            recorder.mute(false);
+        }
+    }
+
     ApplicationProperties applicationProperties;
+    TextButton muteButton;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
 };
