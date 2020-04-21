@@ -57,7 +57,9 @@
 /** A simple class that acts as an AudioIODeviceCallback and writes the
     incoming audio data to a WAV file.
 */
-class AudioRecorder  : public AudioIODeviceCallback
+class AudioRecorder
+    : public AudioIODeviceCallback,
+      public Timer
 {
 public:
     enum SupportedAudioFormat
@@ -191,9 +193,23 @@ public:
             {
                 activeWriter.load()->write(inputChannelData, numSamples);
                 detectSilence(buffer, numInputChannels, numSamples);
+                // clip detection
+                for (int i = 0; i < numInputChannels; ++i)
+                {
+                    for (int j = 0; j < numSamples; ++j)
+                    {
+                        if (inputChannelData[i][j] > 0.99)
+                        {
+                            clip = true;
+                            startTimer(200);
+                            goto endLoop;
+                        }
+                    }
+                }
             }
         }
 
+    endLoop:
         // handle display
         if (numInputChannels >= thumbnail.getNumChannels())
         {
@@ -217,7 +233,14 @@ public:
         }
     }
 
+    void timerCallback() override 
+    {
+        clip = false;
+        stopTimer();
+    }
+
     std::atomic<bool> shouldRestart = false;
+    std::atomic<bool> clip = false;
 
 private:
 
@@ -360,11 +383,20 @@ class AudioRecordingDemo  : public Component,
 {
 public:
     AudioRecordingDemo()
-        : muteButton("mute")
+        : muteButton("mute"),
+          clipLabel("CLIP")
     {
         setOpaque (true);
         addAndMakeVisible (muteButton);
+        addAndMakeVisible(clipLabel);
         addAndMakeVisible (recordingThumbnail);
+
+        //clipLabel.setColour(Label::ColourIds::textColourId, Colours::darkred);
+        clipLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
+        clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::red);
+      //  clipLabel.setJustificationType(Justification::centred);
+        clipLabel.setVisible(false);
+        clipLabel.setEnabled(false);
 
         muteButton.addListener(this);
 
@@ -392,7 +424,7 @@ public:
 
         audioDeviceManager.addAudioCallback (&recorder);
 
-        setSize(300, 80);
+        setSize(300, 120);
 
         startRecording();
     }
@@ -446,7 +478,8 @@ public:
         auto area = getLocalBounds();
 
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
-        muteButton.setBounds(area.removeFromLeft(50).removeFromTop(50));
+        muteButton.setBounds(area.removeFromLeft(60).reduced(8));
+        clipLabel.setBounds(area.removeFromLeft(60).reduced(8));
     }
 
 private:
@@ -492,9 +525,8 @@ private:
             recorder.startRecording(); // sets up the new file in advance        
             recorder.shouldRestart = false;
         }
+        clipLabel.setVisible(recorder.clip);        
     }
-
-
 
     void buttonClicked(Button* button) override
     {
@@ -513,6 +545,7 @@ private:
 
     ApplicationProperties applicationProperties;
     TextButton muteButton;
+    TextButton clipLabel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
 };
