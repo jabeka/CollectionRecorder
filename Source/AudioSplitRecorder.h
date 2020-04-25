@@ -242,7 +242,25 @@ public:
     void updateCurrenFolder (File folder)
     {
         currentFolder = folder.getFullPathName();
+        reCreateFileIfSilence();
     }
+
+    void updateCurrentFormat (AudioRecorder::SupportedAudioFormat format)
+    {
+        selectedFormat = format;
+        reCreateFileIfSilence();
+    }
+
+    void reCreateFileIfSilence()
+    {
+        if (isSilence)
+        {
+            stop();
+            currentFile.deleteFile();
+            startRecording();
+        }
+    }
+
 
     std::atomic<bool> shouldRestart = false;
     std::atomic<bool> clip = false;
@@ -390,13 +408,20 @@ public:
     AudioRecordingDemo()
         : muteButton("mute"),
           clipLabel("CLIP"),
-          choseDestFolderButton("destination")
+          choseDestFolderButton("destination"),
+          formatComboBox("formatComboBox")
     {
+        if (!initProperties())
+        {
+            setDefaultProperties();
+        }
+
         setOpaque (true);
         addAndMakeVisible (muteButton);
         addAndMakeVisible(clipLabel);
         addAndMakeVisible (recordingThumbnail);
-        addAndMakeVisible(choseDestFolderButton);
+        addAndMakeVisible(choseDestFolderButton); 
+        addAndMakeVisible(formatComboBox);
 
         clipLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
         clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::red);
@@ -406,10 +431,10 @@ public:
         muteButton.addListener(this);
         choseDestFolderButton.addListener(this);
 
-        if (!initProperties())
-        {
-            setDefaultProperties();
-        }
+        formatComboBox.addItem("Wav", 1);
+        formatComboBox.addItem("Flac", 2);
+        formatComboBox.setSelectedId(applicationProperties.getUserSettings()->getIntValue("format") + 1);
+        formatComboBox.onChange = [this] { recorder.updateCurrentFormat((AudioRecorder::SupportedAudioFormat)(formatComboBox.getSelectedId() - 1)); };
 
        recorder.initialize(
            applicationProperties.getUserSettings()->getValue("folder"),
@@ -467,7 +492,7 @@ public:
 
         props->setValue("folder", folderPath);
         props->setValue("RMSThreshold", 0.01);
-        props->setValue("silenceLength", 3);
+        props->setValue("silenceLength", 2);
 
         props->save();
         props->reload();
@@ -486,7 +511,8 @@ public:
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
         muteButton.setBounds(area.removeFromLeft(60).reduced(8, 4));
         choseDestFolderButton.setBounds(area.removeFromLeft(80).reduced(0, 4));
-        clipLabel.setBounds(area.removeFromLeft(60).reduced(8, 4));
+        formatComboBox.setBounds(area.removeFromLeft(80).reduced(8, 4));
+        clipLabel.setBounds(area.removeFromLeft(60).reduced(0, 4));
     }
 
 private:
@@ -560,9 +586,10 @@ private:
     }
 
     ApplicationProperties applicationProperties;
-    TextButton muteButton;
-    TextButton clipLabel;
-    TextButton choseDestFolderButton;
+    TextButton            muteButton;
+    TextButton            clipLabel;
+    TextButton            choseDestFolderButton;
+    ComboBox              formatComboBox;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
 };
