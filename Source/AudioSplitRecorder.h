@@ -239,6 +239,11 @@ public:
         stopTimer();
     }
 
+    void updateCurrenFolder (File folder)
+    {
+        currentFolder = folder.getFullPathName();
+    }
+
     std::atomic<bool> shouldRestart = false;
     std::atomic<bool> clip = false;
 
@@ -384,21 +389,22 @@ class AudioRecordingDemo  : public Component,
 public:
     AudioRecordingDemo()
         : muteButton("mute"),
-          clipLabel("CLIP")
+          clipLabel("CLIP"),
+          choseDestFolderButton("destination")
     {
         setOpaque (true);
         addAndMakeVisible (muteButton);
         addAndMakeVisible(clipLabel);
         addAndMakeVisible (recordingThumbnail);
+        addAndMakeVisible(choseDestFolderButton);
 
-        //clipLabel.setColour(Label::ColourIds::textColourId, Colours::darkred);
         clipLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
         clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::red);
-      //  clipLabel.setJustificationType(Justification::centred);
         clipLabel.setVisible(false);
         clipLabel.setEnabled(false);
 
         muteButton.addListener(this);
+        choseDestFolderButton.addListener(this);
 
         if (!initProperties())
         {
@@ -478,8 +484,9 @@ public:
         auto area = getLocalBounds();
 
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
-        muteButton.setBounds(area.removeFromLeft(60).reduced(8));
-        clipLabel.setBounds(area.removeFromLeft(60).reduced(8));
+        muteButton.setBounds(area.removeFromLeft(60).reduced(8, 4));
+        choseDestFolderButton.setBounds(area.removeFromLeft(80).reduced(0, 4));
+        clipLabel.setBounds(area.removeFromLeft(60).reduced(8, 4));
     }
 
 private:
@@ -541,11 +548,21 @@ private:
             button->setButtonText("mute");
             recorder.mute(false);
         }
+        else  if (button->getButtonText() == "destination")
+        {
+            FileChooser chooser("Chose the destination folder");
+            if (chooser.browseForDirectory()) {
+                File currentFolder = chooser.getResult();
+                recorder.updateCurrenFolder(currentFolder);
+                applicationProperties.getUserSettings()->setValue("folder", currentFolder.getFullPathName());
+            }
+        }
     }
 
     ApplicationProperties applicationProperties;
     TextButton muteButton;
     TextButton clipLabel;
+    TextButton choseDestFolderButton;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
 };
