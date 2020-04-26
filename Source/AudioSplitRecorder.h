@@ -45,9 +45,6 @@
  END_JUCE_PIP_METADATA
 
 *******************************************************************************/
-
-#define JUCE_USE_MP3AUDIOFORMAT 
-
 #pragma once
 
 #include "DemoUtilities.h"
@@ -455,7 +452,7 @@ public:
 
         audioDeviceManager.addAudioCallback (&recorder);
 
-        setSize(300, 120);
+        setSize(400, 120);
 
         startRecording();
     }
@@ -498,7 +495,6 @@ public:
         props->reload();
     }
 
-
     void paint (Graphics& g) override
     {
         g.fillAll (getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground));
@@ -509,10 +505,10 @@ public:
         auto area = getLocalBounds();
 
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
-        muteButton.setBounds(area.removeFromLeft(60).reduced(8, 4));
+        muteButton.setBounds(area.removeFromLeft(96).reduced(8, 4));
         choseDestFolderButton.setBounds(area.removeFromLeft(80).reduced(0, 4));
-        formatComboBox.setBounds(area.removeFromLeft(80).reduced(8, 4));
-        clipLabel.setBounds(area.removeFromLeft(60).reduced(0, 4));
+        formatComboBox.setBounds(area.removeFromLeft(96).reduced(8, 4));
+        clipLabel.setBounds(area.removeFromLeft(80).reduced(0, 4));
     }
 
 private:
