@@ -23,7 +23,7 @@
 
  BEGIN_JUCE_PIP_METADATA
 
- name:             AudioRecordingDemo
+ name:             CollectionRecorder
  version:          1.0.0
  vendor:           JUCE
  website:          http://juce.com
@@ -38,7 +38,7 @@
  moduleFlags:      JUCE_STRICT_REFCOUNTEDPOINTER=1
 
  type:             Component
- mainClass:        AudioRecordingDemo
+ mainClass:        CollectionRecorder
 
  useLocalCopy:     1
 
