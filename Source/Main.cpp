@@ -18,7 +18,7 @@ public:
     const String getApplicationName() override       { return "AudioRecordingDemo"; }
     const String getApplicationVersion() override    { return "1.0.0"; }
 
-    void initialise (const String&) override         { mainWindow.reset (new MainWindow ("AudioRecordingDemo", new AudioRecordingDemo(), *this)); }
+    void initialise (const String&) override         { mainWindow.reset (new MainWindow ("AudioRecordingDemo", new AudioSplitRecorder(), *this)); }
     void shutdown() override                         { mainWindow = nullptr; }
 
 private:
