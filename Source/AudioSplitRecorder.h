@@ -138,9 +138,9 @@ public:
         props->setValue("format", AudioRecorder::SupportedAudioFormat::flac);
 
 #if (JUCE_ANDROID || JUCE_IOS)
-        auto documenfolderPathtsDir = File::getSpecialLocation(File::tempDirectory).getFullPathName() + "\\CollectionRecorder";
+        auto documenfolderPathtsDir = File::getSpecialLocation(File::tempDirectory).getFullPathName() + File::getSeparatorChar() + "\ollectionRecorder";
 #else
-        auto folderPath = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + "\\CollectionRecorder";
+        auto folderPath = File::getSpecialLocation(File::userDocumentsDirectory).getFullPathName() + File::getSeparatorChar() + "CollectionRecorder";
 #endif
 
         props->setValue("folder", folderPath);

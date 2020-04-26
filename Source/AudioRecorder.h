@@ -240,7 +240,17 @@ private:
         default:
             break;
         }
-        return documentsDir.getNonexistentChildFile("Tune " + currentFileNumber, extension, false);
+
+        if (currentFileNumber == 0)
+        {
+            File file;
+            do {
+                currentFileNumber++; // begin at 1
+                file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String::String("Tune ") + String::String(currentFileNumber) + String::String(extension));
+            } while (file.exists());
+        }
+
+        return documentsDir.getNonexistentChildFile(String::String("Tune ") + String::String(currentFileNumber), extension, false);
     }
 
     void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
@@ -290,5 +300,5 @@ private:
     int silenceCount = 0;
     int silenceThreshold = 10000;
     bool isSilence = true;
-    int currentFileNumber = 1;
+    int currentFileNumber = 0;
 };
