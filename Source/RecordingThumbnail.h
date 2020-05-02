@@ -38,11 +38,6 @@ public:
             auto thumbArea = getLocalBounds();
             thumbnail.drawChannels(g, thumbArea.reduced(2), 0.0, endTime, 1.0f);
         }
-        else
-        {
-            g.setFont(14.0f);
-            g.drawFittedText("(No file recorded)", getLocalBounds(), Justification::centred, 2);
-        }
     }
 
 private:

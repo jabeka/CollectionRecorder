@@ -74,11 +74,10 @@ public:
         addAndMakeVisible(clipLabel);
         addAndMakeVisible (recordingThumbnail);
         addAndMakeVisible(choseDestFolderButton); 
-        addAndMakeVisible(formatComboBox);
-        
+        addAndMakeVisible(formatComboBox);        
 
         clipLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
-        clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::black);
+        clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::red);
         clipLabel.setVisible(false);
         clipLabel.setEnabled(false);
 
@@ -87,22 +86,32 @@ public:
 
         formatComboBox.addItem("Wav", 1);
         formatComboBox.addItem("Flac", 2);
-        formatComboBox.setSelectedId(applicationProperties.getUserSettings()->getIntValue("format") + 1);
+        formatComboBox.setSelectedId(applicationProperties.getUserSettings()->getIntValue("format", 1) + 1);
         formatComboBox.onChange = [this] { recorder.setCurrentFormat((AudioRecorder::SupportedAudioFormat)(formatComboBox.getSelectedId() - 1)); };
 
        recorder.initialize(
            applicationProperties.getUserSettings()->getValue("folder"),
-           (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format"),
-           applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold"),
-           applicationProperties.getUserSettings()->getDoubleValue("silenceLength")
+           (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format", 1),
+           applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.02),
+           applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2)
        );
+
+       nbOutChannels =
+           applicationProperties.getUserSettings()->getBoolValue("disableOutput") ?
+           0 :
+           2;
         
        #ifndef JUCE_DEMO_RUNNER
         RuntimePermissions::request (RuntimePermissions::recordAudio,
                                      [this] (bool granted)
                                      {
-                                         int numInputChannels = granted ? 2 : 0;
-                                         deviceOpenError = audioDeviceManager.initialise (numInputChannels, 2, nullptr, true, {}, nullptr);
+                                        if (!granted)
+                                        {
+                                            displayErrorPopup("Could not get acces to the input device, application will now quit");
+                                            JUCEApplicationBase::quit();
+                                            return;
+                                        }
+                                         deviceOpenError = audioDeviceManager.initialise (2, nbOutChannels, nullptr, true, {}, nullptr);
                                      });
        #endif
 
@@ -110,16 +119,21 @@ public:
       
         if (deviceOpenError.isNotEmpty())
         {
-            TextButton popupLabel;
+            // retry without output
+            deviceOpenError = audioDeviceManager.initialise(2, 0, nullptr, true, {}, nullptr);
 
-            popupLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
-            popupLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::black);
-            popupLabel.setButtonText(deviceOpenError + "\nThe software will now exit");
-            popupLabel.setEnabled(false);
-            popupLabel.setSize(300, 100);
-            DialogWindow::showModalDialog("Error", &popupLabel, this, Colours::white, true, false, false);
-            JUCEApplicationBase::quit();
-            return;
+            if (deviceOpenError.isNotEmpty())
+            {
+                // still an error
+                displayErrorPopup(deviceOpenError + "\nThe software will now exit");
+                JUCEApplicationBase::quit();
+                return;
+            }
+            else
+            {
+                // still an error
+                displayErrorPopup("Error with the output, output disabled.");
+            }
         }
 
         audioDeviceManager.addAudioCallback (&recorder);
@@ -141,8 +155,12 @@ public:
         options.osxLibrarySubFolder = "Application Support";
         applicationProperties.setStorageParameters(options);
         auto props = applicationProperties.getUserSettings();
-        auto checkValueExists = props->getValue("format");
-        return !checkValueExists.isEmpty();
+        if (props->getFile().exists()) {
+            // file exists, need to validate all settings
+            return true;
+        }
+
+        return false; // settings do not exists, got to create it
     }
 
     void setDefaultProperties()
@@ -157,8 +175,9 @@ public:
 #endif
 
         props->setValue("folder", folderPath);
-        props->setValue("RMSThreshold", 0.01);
+        props->setValue("RMSThreshold", 0.02);
         props->setValue("silenceLength", 2);
+        props->setValue("disableOutput", false);
 
         props->save();
         props->reload();
@@ -188,10 +207,17 @@ private:
     AudioDeviceManager& audioDeviceManager { getSharedAudioDeviceManager (1, 0) };
    #endif
 
+    // components
     RecordingThumbnail recordingThumbnail;
     AudioRecorder recorder{ recordingThumbnail.getAudioThumbnail() };
+    TextButton            muteButton;
+    TextButton            clipLabel;
+    TextButton            choseDestFolderButton;
+    ComboBox              formatComboBox;
 
-
+    ApplicationProperties applicationProperties;
+    String                deviceOpenError;
+    int                   nbOutChannels;
     File lastRecording;
 
     void startRecording()
@@ -250,12 +276,18 @@ private:
         }
     }
 
-    ApplicationProperties applicationProperties;
-    TextButton            muteButton;
-    TextButton            clipLabel;
-    TextButton            choseDestFolderButton;
-    ComboBox              formatComboBox;
-    String                deviceOpenError;
+    void displayErrorPopup (String message)
+    {
+        TextButton popupLabel;
+
+        popupLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
+        popupLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::black);
+        popupLabel.setButtonText(message);
+        popupLabel.setEnabled(false);
+        popupLabel.setSize(300, 100);
+
+        DialogWindow::showModalDialog("Error", &popupLabel, this, Colours::white, true, false, false);
+    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioSplitRecorder)
 };
