@@ -38,7 +38,7 @@ private:
             setFullScreen (true);
            #else
             setResizable (false, false);
-            setSize(400, 120);
+           // setSize(600, 120);
             centreWithSize (getWidth(), getHeight());
            #endif
 

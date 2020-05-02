@@ -75,9 +75,10 @@ public:
         addAndMakeVisible (recordingThumbnail);
         addAndMakeVisible(choseDestFolderButton); 
         addAndMakeVisible(formatComboBox);
+        
 
         clipLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
-        clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::red);
+        clipLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::black);
         clipLabel.setVisible(false);
         clipLabel.setEnabled(false);
 
@@ -101,15 +102,27 @@ public:
                                      [this] (bool granted)
                                      {
                                          int numInputChannels = granted ? 2 : 0;
-                                         audioDeviceManager.initialise (numInputChannels, 2, nullptr, true, {}, nullptr);
+                                         deviceOpenError = audioDeviceManager.initialise (numInputChannels, 2, nullptr, true, {}, nullptr);
                                      });
        #endif
+
+        setSize(600, 120);
       
+        if (deviceOpenError.isNotEmpty())
+        {
+            TextButton popupLabel;
+
+            popupLabel.setColour(TextButton::ColourIds::textColourOffId, Colours::white);
+            popupLabel.setColour(TextButton::ColourIds::buttonColourId, Colours::black);
+            popupLabel.setButtonText(deviceOpenError + "\nThe software will now exit");
+            popupLabel.setEnabled(false);
+            popupLabel.setSize(300, 100);
+            DialogWindow::showModalDialog("Error", &popupLabel, this, Colours::white, true, false, false);
+            JUCEApplicationBase::quit();
+            return;
+        }
 
         audioDeviceManager.addAudioCallback (&recorder);
-
-        setSize(400, 120);
-
         startRecording();
     }
 
@@ -242,6 +255,7 @@ private:
     TextButton            clipLabel;
     TextButton            choseDestFolderButton;
     ComboBox              formatComboBox;
+    String                deviceOpenError;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioSplitRecorder)
 };
