@@ -88,7 +88,7 @@ public:
         formatComboBox.addItem("Wav", 1);
         formatComboBox.addItem("Flac", 2);
         formatComboBox.setSelectedId(applicationProperties.getUserSettings()->getIntValue("format") + 1);
-        formatComboBox.onChange = [this] { recorder.updateCurrentFormat((AudioRecorder::SupportedAudioFormat)(formatComboBox.getSelectedId() - 1)); };
+        formatComboBox.onChange = [this] { recorder.setCurrentFormat((AudioRecorder::SupportedAudioFormat)(formatComboBox.getSelectedId() - 1)); };
 
        recorder.initialize(
            applicationProperties.getUserSettings()->getValue("folder"),
@@ -241,10 +241,10 @@ private:
         }
         else  if (button->getButtonText() == "destination")
         {
-            FileChooser chooser("Chose the destination folder");
+            FileChooser chooser("Chose the destination folder", recorder.getCurrentFolder());
             if (chooser.browseForDirectory()) {
                 File currentFolder = chooser.getResult();
-                recorder.updateCurrenFolder(currentFolder);
+                recorder.setCurrentFolder(currentFolder);
                 applicationProperties.getUserSettings()->setValue("folder", currentFolder.getFullPathName());
             }
         }
