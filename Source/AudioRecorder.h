@@ -192,13 +192,18 @@ public:
         stopTimer();
     }
 
-    void updateCurrenFolder(File folder)
+    File getCurrentFolder()
+    {
+        return currentFolder;
+    }
+
+    void setCurrentFolder(File folder)
     {
         currentFolder = folder.getFullPathName();
         reCreateFileIfSilence();
     }
 
-    void updateCurrentFormat(AudioRecorder::SupportedAudioFormat format)
+    void setCurrentFormat(AudioRecorder::SupportedAudioFormat format)
     {
         selectedFormat = format;
         reCreateFileIfSilence();
