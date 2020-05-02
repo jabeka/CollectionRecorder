@@ -164,7 +164,7 @@ public:
 
     endLoop:
         // handle display
-        if (numInputChannels >= thumbnail.getNumChannels())
+        if (!isSilence && numInputChannels >= thumbnail.getNumChannels())
         {
             thumbnail.addBlock(nextSampleNum, buffer, 0, numSamples);
             nextSampleNum += numSamples;
