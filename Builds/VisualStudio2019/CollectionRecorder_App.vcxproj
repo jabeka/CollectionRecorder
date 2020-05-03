@@ -1846,6 +1846,7 @@
     <ClCompile Include="..\..\JuceLibraryCode\include_juce_gui_extra.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\AudioFileProcessor.h" />
     <ClInclude Include="..\..\Source\AudioFileTrimmer.h" />
     <ClInclude Include="..\..\Source\AudioRecorder.h" />
     <ClInclude Include="..\..\Source\AudioSplitRecorder.h" />

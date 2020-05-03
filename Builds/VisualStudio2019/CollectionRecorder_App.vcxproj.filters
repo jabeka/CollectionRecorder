@@ -4121,6 +4121,9 @@
     <ClInclude Include="..\..\Source\AudioFileNormalizer.h">
       <Filter>CollectionRecorder\Source</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\AudioFileProcessor.h">
+      <Filter>CollectionRecorder\Source</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\Program Files\JUCE\modules\juce_audio_formats\codecs\flac\Flac Licence.txt">
