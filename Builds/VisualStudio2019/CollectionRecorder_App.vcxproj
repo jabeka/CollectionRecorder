@@ -1846,11 +1846,12 @@
     <ClCompile Include="..\..\JuceLibraryCode\include_juce_gui_extra.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\AudioFileTrimmer.h" />
     <ClInclude Include="..\..\Source\AudioRecorder.h" />
     <ClInclude Include="..\..\Source\AudioSplitRecorder.h" />
     <ClInclude Include="..\..\Source\DemoUtilities.h" />
     <ClInclude Include="..\..\Source\AudioLiveScrollingDisplay.h" />
-    <ClInclude Include="..\..\Source\Normalizer.h" />
+    <ClInclude Include="..\..\Source\AudioFileNormalizer.h" />
     <ClInclude Include="..\..\Source\RecordingThumbnail.h" />
     <ClInclude Include="C:\Program Files\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h" />
     <ClInclude Include="C:\Program Files\JUCE\modules\juce_audio_basics\buffers\juce_AudioChannelSet.h" />
