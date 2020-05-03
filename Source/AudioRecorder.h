@@ -1,7 +1,3 @@
-//==============================================================================
-/** A simple class that acts as an AudioIODeviceCallback and writes the
-    incoming audio data to a WAV file.
-*/
 #pragma once
 
 #include <JuceHeader.h>
@@ -300,10 +296,10 @@ private:
     void applyPostRecordTreatment(File fileToApply)
     {
         AudioFileNormalizer normalizer(fileToApply);
-        AudioFileTrimer trimer(fileToApply, RMSThreshold);
+        normalizer.process();
 
-        normalizer.normalize();
-        trimer.trim();
+        AudioFileTrimer trimer(fileToApply, RMSThreshold);
+        trimer.process();
     }
 
     String currentFolder;
