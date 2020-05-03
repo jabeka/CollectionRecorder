@@ -20,10 +20,12 @@ public:
         auto reader = formatManager.createReaderFor(file);
         if (reader != nullptr)
         {
-            std::unique_ptr<AudioFormatReaderSource> newSource(new AudioFormatReaderSource(reader, true)); // [11]
+            // create reader
+            std::unique_ptr<AudioFormatReaderSource> newSource(new AudioFormatReaderSource(reader, true));
             newSource.get()->prepareToPlay(bufferSize, reader->sampleRate);
             newSource.get()->setLooping(false);
 
+            // first read once the file to get max amplitude sample
             double max = 0;
             double min = 0;
             do
@@ -39,19 +41,22 @@ public:
                     }
                 }
             } while (newSource.get()->getNextReadPosition() <= newSource.get()->getTotalLength());
-            /////
+            // determine normalization factor
             double factor = 0.99 / jmax(max, std::abs(min));
 
+            // create a temp copy
             File copy = File(file.getFullPathName() + " - normalising");
             copy.create();
 
+            // create writer
             AudioFormat* audioFormat = formatManager.findFormatForFileExtension(file.getFileExtension());            
             auto writer = audioFormat->createWriterFor(new FileOutputStream(copy, bufferSize), reader->sampleRate, reader->numChannels, reader->bitsPerSample, reader->metadataValues, 3);
-            newSource.get()->setNextReadPosition(0);
+            
 
-            /// now write
-            newSource.get()->prepareToPlay(bufferSize, reader->sampleRate);
-            newSource.get()->setLooping(false);
+            // reset play head
+            newSource.get()->setNextReadPosition(0); 
+
+            /// now reread the file, apply gain on the temp buffer and write it to the temp file
             do
             {
                 newSource.get()->getNextAudioBlock(channelInfo);
@@ -60,10 +65,11 @@ public:
                 writer->flush();
             } while (newSource.get()->getNextReadPosition() <= newSource.get()->getTotalLength());
 
+            // done, free files
             delete writer;
+            newSource->releaseResources();
 
             // delete original and rename copy
-            newSource->releaseResources();
             if (file.deleteFile()) 
             {
                 copy.moveFileTo(copy.getFullPathName().replace(" - normalising", "", false));
