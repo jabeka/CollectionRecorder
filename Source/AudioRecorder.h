@@ -5,6 +5,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Normalizer.h"
 
 class AudioRecorder
     : public AudioIODeviceCallback,
@@ -31,6 +32,10 @@ public:
         {
             currentFile.deleteFile();
         }
+        else
+        {
+            applyPostRecordTreatment(currentFile);
+        }
     }
 
     void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThreshold, float silenceLength)
@@ -45,6 +50,10 @@ public:
     void startRecording()
     {
         stop();
+        if (shouldRestart) // it means we've ended a file , should do postrecord treatment
+        {
+            applyPostRecordTreatment(currentFile);
+        }
         currentFile = getNextFile();
         currentFileNumber++;
 
@@ -285,6 +294,12 @@ private:
             isSilence = true;
             shouldRestart = true;
         }
+    }
+
+    void applyPostRecordTreatment(File fileToApply)
+    {
+        Normalizer normalizer(fileToApply);
+        normalizer.normalize();
     }
 
     String currentFolder;

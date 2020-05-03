@@ -238,7 +238,7 @@ private:
 
         recordingThumbnail.setDisplayFullThumbnail (false);
 
-        startTimer(10);
+        startTimer(1);
     }
 
     void timerCallback() override
