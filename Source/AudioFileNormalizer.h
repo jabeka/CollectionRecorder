@@ -2,19 +2,20 @@
 
 #include <JuceHeader.h>
 
-class Normalizer
+class AudioFileNormalizer
 {
 public:
-	Normalizer(File file)
+	AudioFileNormalizer(File file)
         : file(file),
           buffer(2, bufferSize),
-          channelInfo(buffer)
+          channelInfo(buffer),
+          tempExtension(" - normalising")
 	{
         formatManager.registerBasicFormats();
         channelInfo.numSamples = bufferSize;
 	}
 
-	~Normalizer() {}
+	~AudioFileNormalizer() {}
 
     void normalize() {
         auto reader = formatManager.createReaderFor(file);
@@ -45,7 +46,7 @@ public:
             double factor = 0.99 / jmax(max, std::abs(min));
 
             // create a temp copy
-            File copy = File(file.getFullPathName() + " - normalising");
+            File copy = File(file.getFullPathName() + tempExtension);
             copy.create();
 
             // create writer
@@ -72,16 +73,17 @@ public:
             // delete original and rename copy
             if (file.deleteFile()) 
             {
-                copy.moveFileTo(copy.getFullPathName().replace(" - normalising", "", false));
+                copy.moveFileTo(copy.getFullPathName().replace(tempExtension, "", false));
             }
         }
     }
 private:
     const int bufferSize = 4906;
+    const juce::String tempExtension;
     File file;
     AudioFormatManager formatManager;// <[9]
     AudioSampleBuffer buffer;
     AudioSourceChannelInfo channelInfo;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Normalizer)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioFileNormalizer)
 };

@@ -5,7 +5,8 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "Normalizer.h"
+#include "AudioFileNormalizer.h"
+#include "AudioFileTrimmer.h"
 
 class AudioRecorder
     : public AudioIODeviceCallback,
@@ -298,8 +299,11 @@ private:
 
     void applyPostRecordTreatment(File fileToApply)
     {
-        Normalizer normalizer(fileToApply);
+        AudioFileNormalizer normalizer(fileToApply);
+        AudioFileTrimer trimer(fileToApply, RMSThreshold);
+
         normalizer.normalize();
+        trimer.trim();
     }
 
     String currentFolder;

@@ -4115,7 +4115,10 @@
     <ClInclude Include="..\..\Source\AudioRecorder.h">
       <Filter>CollectionRecorder\Source</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Source\Normalizer.h">
+    <ClInclude Include="..\..\Source\AudioFileTrimmer.h">
+      <Filter>CollectionRecorder\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AudioFileNormalizer.h">
       <Filter>CollectionRecorder\Source</Filter>
     </ClInclude>
   </ItemGroup>
