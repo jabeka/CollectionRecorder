@@ -5,13 +5,13 @@
 class Normalizer
 {
 public:
-	Normalizer()
-        : file("D:\\Documents\\CollectionRecorder\\gloubi.flac"),
-          buffer(2, 4096),
+	Normalizer(File file)
+        : file(file),
+          buffer(2, bufferSize),
           channelInfo(buffer)
 	{
         formatManager.registerBasicFormats();
-        channelInfo.numSamples = 4096;
+        channelInfo.numSamples = bufferSize;
 	}
 
 	~Normalizer() {}
@@ -21,7 +21,7 @@ public:
         if (reader != nullptr)
         {
             std::unique_ptr<AudioFormatReaderSource> newSource(new AudioFormatReaderSource(reader, true)); // [11]
-            newSource.get()->prepareToPlay(4096, reader->sampleRate);
+            newSource.get()->prepareToPlay(bufferSize, reader->sampleRate);
             newSource.get()->setLooping(false);
 
             double max = 0;
@@ -46,11 +46,11 @@ public:
             copy.create();
 
             AudioFormat* audioFormat = formatManager.findFormatForFileExtension(file.getFileExtension());            
-            auto writer = audioFormat->createWriterFor(new FileOutputStream(copy, 4096), reader->sampleRate, reader->numChannels, reader->bitsPerSample, reader->metadataValues, 3);
+            auto writer = audioFormat->createWriterFor(new FileOutputStream(copy, bufferSize), reader->sampleRate, reader->numChannels, reader->bitsPerSample, reader->metadataValues, 3);
             newSource.get()->setNextReadPosition(0);
 
             /// now write
-            newSource.get()->prepareToPlay(4096, reader->sampleRate);
+            newSource.get()->prepareToPlay(bufferSize, reader->sampleRate);
             newSource.get()->setLooping(false);
             do
             {
@@ -71,6 +71,7 @@ public:
         }
     }
 private:
+    const int bufferSize = 4906;
     File file;
     AudioFormatManager formatManager;// <[9]
     AudioSampleBuffer buffer;
