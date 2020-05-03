@@ -209,7 +209,7 @@ private:
 
     // components
     RecordingThumbnail recordingThumbnail;
-    AudioRecorder recorder{ recordingThumbnail.getAudioThumbnail() };
+    AudioRecorder         recorder{ recordingThumbnail.getAudioThumbnail() };
     TextButton            muteButton;
     TextButton            clipLabel;
     TextButton            choseDestFolderButton;
@@ -218,7 +218,6 @@ private:
     ApplicationProperties applicationProperties;
     String                deviceOpenError;
     int                   nbOutChannels;
-    File lastRecording;
 
     void startRecording()
     {
