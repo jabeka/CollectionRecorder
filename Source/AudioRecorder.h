@@ -77,9 +77,25 @@ public:
                     break;
                 }
 
-                auto options = audioFormat->getQualityOptions();
+                if (!audioFormat->getPossibleBitDepths().contains(bitDepth))
+                {
+                    switch (bitDepth)
+                    {
+                    case 32:
+                    case 24:
+                        if (audioFormat->getPossibleBitDepths().contains(24))
+                        {
+                            bitDepth = 24;
+                            break;
+                        }
+                    case 16:
+                    default:
+                        bitDepth = 16;
+                        break;
+                    }
+                }
 
-                if (auto writer = audioFormat->createWriterFor(fileStream.get(), sampleRate, 2, 16, {}, 3))
+                if (auto writer = audioFormat->createWriterFor(fileStream.get(), sampleRate, 2, bitDepth, {}, 3))
                 {
                     fileStream.release(); // (passes responsibility for deleting the stream to the writer object that is now using it)
 
@@ -123,11 +139,13 @@ public:
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
         sampleRate = device->getCurrentSampleRate();
+        bitDepth = device->getCurrentBitDepth();
     }
 
     void audioDeviceStopped() override
     {
         sampleRate = 0;
+        bitDepth = 0;
     }
 
     void audioDeviceIOCallback(const float** inputChannelData, int numInputChannels,
@@ -309,6 +327,7 @@ private:
     TimeSliceThread backgroundThread{ "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
     double sampleRate = 0.0;
+    int bitDepth = 0;
     int64 nextSampleNum = 0;
 
     CriticalSection writerLock;
