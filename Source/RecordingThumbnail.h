@@ -19,12 +19,6 @@ public:
 
     AudioThumbnail& getAudioThumbnail() { return thumbnail; }
 
-    void setDisplayFullThumbnail(bool displayFull)
-    {
-        displayFullThumb = displayFull;
-        repaint();
-    }
-
     void paint(Graphics& g) override
     {
         g.fillAll(Colours::darkgrey);
@@ -32,12 +26,14 @@ public:
 
         if (thumbnail.getTotalLength() > 0.0)
         {
-            auto endTime = displayFullThumb ? thumbnail.getTotalLength()
-                : jmax(30.0, thumbnail.getTotalLength());
-
             auto thumbArea = getLocalBounds();
-            thumbnail.drawChannels(g, thumbArea.reduced(2), 0.0, endTime, 1.0f);
+            thumbnail.drawChannels(g, thumbArea.reduced(2), thumbnail.getTotalLength() - length, thumbnail.getTotalLength() , 1.0f);
         }
+    }
+
+    void setLength(int l)
+    {
+        length = l;
     }
 
 private:
@@ -45,7 +41,7 @@ private:
     AudioThumbnailCache thumbnailCache{ 10 };
     AudioThumbnail thumbnail{ 512, formatManager, thumbnailCache };
 
-    bool displayFullThumb = false;
+    int length = 5;
 
     void changeListenerCallback(ChangeBroadcaster* source) override
     {

@@ -222,7 +222,7 @@ public:
         }
 
         // handle display
-        if (!isSilence && numInputChannels >= thumbnail.getNumChannels())
+        if (numInputChannels >= thumbnail.getNumChannels())
         {
             thumbnail.addBlock(nextSampleNum, buffer, 0, numSamples);
             nextSampleNum += numSamples;
