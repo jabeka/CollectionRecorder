@@ -32,7 +32,8 @@ public:
         }
         else
         {
-            applyPostRecordTreatment(currentFile);
+            postRecordFile = currentFile;
+            applyPostRecordTreatment();
         }
         delete memoryBuffer;
     }
@@ -49,9 +50,11 @@ public:
     void startRecording()
     {
         stop();
-        if (shouldRestart) // it means we've ended a file , should do postrecord treatment
+        if (shouldRestart) // it means we've ended a file , should do post-record treatment
         {
-            applyPostRecordTreatment(currentFile);
+            ThreadPool pool;
+            postRecordFile = currentFile;
+            pool.addJob([this]() { applyPostRecordTreatment(); });            
         }
         currentFile = getNextFile();
         currentFileNumber++;
@@ -316,12 +319,13 @@ private:
         }
     }
 
-    void applyPostRecordTreatment(File fileToApply)
+
+    void applyPostRecordTreatment()
     {
-        AudioFileNormalizer normalizer(fileToApply);
+        AudioFileNormalizer normalizer(postRecordFile);
         normalizer.process();
 
-        AudioFileTrimer trimer(fileToApply, RMSThreshold);
+        AudioFileTrimer trimer(postRecordFile, RMSThreshold);
         trimer.process();
     }
 
@@ -341,6 +345,7 @@ private:
 
     String currentFolder;
     File currentFile;
+    File postRecordFile;
     SupportedAudioFormat selectedFormat;
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread{ "Audio Recorder Thread" }; // the thread that will write our audio data to disk
