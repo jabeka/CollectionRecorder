@@ -37,12 +37,12 @@ public:
         delete memoryBuffer;
     }
 
-    void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThreshold, float silenceLength)
+    void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThres, float silenceLen)
     {
         currentFolder = folder;
         selectedFormat = format;
-        this->RMSThreshold = rmsThreshold;
-        this->silenceLength = silenceLength;
+        RMSThreshold = rmsThres;
+        silenceLength = silenceLen;
     }
 
     //==============================================================================
@@ -132,16 +132,16 @@ public:
         threadedWriter.reset();
     }
 
-    void mute(bool muted)
+    void mute(bool isMuted)
     {
-        this->muted = muted;
+        muted = isMuted;
     }
 
     //==============================================================================
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
-        sampleRate = device->getCurrentSampleRate();
-        silenceTimeThreshold = sampleRate * silenceLength;
+        sampleRate = (int)device->getCurrentSampleRate();
+        silenceTimeThreshold = (int)(sampleRate * silenceLength);
         bitDepth = device->getCurrentBitDepth();
         memoryBuffer = new CircularBuffer<float>(2, silenceTimeThreshold);
     }
@@ -170,7 +170,7 @@ public:
                 // take back, write the buffer history
                 //activeWriter.load()->write(memoryBuffer);
                 AudioBuffer<float> tempBuffer(numInputChannels, memoryBuffer->getSize());
-                for (size_t i = 0; i < numInputChannels; i++)
+                for (int i = 0; i < numInputChannels; i++)
                 {
                     // first from origin to the end
                     tempBuffer.copyFrom(i, 0, memoryBuffer->getRaw(), i, memoryBuffer->getOrigin(), memoryBuffer->getSize() - memoryBuffer->getOrigin());
@@ -211,7 +211,7 @@ public:
         {
             // not muted, send input to output
             for (int i = 0; i < numOutputChannels; ++i)
-                for (size_t j = 0; j < numSamples; j++)
+                for (int j = 0; j < numSamples; j++)
                     outputChannelData[i][j] = inputChannelData[i][j];
         }
         else
@@ -299,7 +299,7 @@ private:
     void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
     {
         RMSAaverageLevel = 0;
-        for (size_t i = 0; i < numInputChannels; i++)
+        for (int i = 0; i < numInputChannels; i++)
         {
             RMSAaverageLevel += buffer.getRMSLevel(i, 0, numSamples);
         }
@@ -341,7 +341,7 @@ private:
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread{ "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
-    double sampleRate = 0.0;
+    int sampleRate = 0;
     int bitDepth = 0;
     int64 nextSampleNum = 0;
 

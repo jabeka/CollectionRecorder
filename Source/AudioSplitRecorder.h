@@ -92,8 +92,8 @@ public:
        recorder.initialize(
            applicationProperties.getUserSettings()->getValue("folder"),
            (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format", 1),
-           applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.02),
-           applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2)
+           (float)applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.02),
+           (float)applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2)
        );
 
        nbOutChannels =

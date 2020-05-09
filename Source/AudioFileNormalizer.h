@@ -18,8 +18,8 @@ protected :
         int samplesTreated = 0;
         do
         {
-            channelInfo.numSamples = ((int64)samplesTreated + bufferSize) > newSource->getTotalLength() ?
-                newSource->getTotalLength() - samplesTreated :
+            channelInfo.numSamples = (samplesTreated + bufferSize) > (int)newSource->getTotalLength() ?
+                (int)newSource->getTotalLength() - samplesTreated :
                 bufferSize;
 
             newSource->getNextAudioBlock(channelInfo);
@@ -29,7 +29,7 @@ protected :
         } while (samplesTreated < newSource->getTotalLength());
 
         // determine normalization factor
-        double factor = 0.99f / max;
+        float factor = 0.99f / max;
         
         // reset play head
         newSource->setNextReadPosition(0);
@@ -38,8 +38,8 @@ protected :
         /// now reread the file, apply gain on the temp buffer and write it to the temp file
         do
         {
-            channelInfo.numSamples = ((int64)samplesTreated + bufferSize) > newSource->getTotalLength() ?
-                newSource->getTotalLength() - samplesTreated :
+            channelInfo.numSamples = (samplesTreated + bufferSize) > (int)newSource->getTotalLength() ?
+                (int)newSource->getTotalLength() - samplesTreated :
                 bufferSize;
             newSource->getNextAudioBlock(channelInfo);
             channelInfo.buffer->applyGain(0, channelInfo.numSamples, factor);

@@ -11,7 +11,7 @@ public :
 	CircularBuffer(int channels, int size)
 		: size(size), 
 		origin(0),
-		audiobuffer(2, size),
+		audiobuffer(channels, size),
 		isFull(false)
 	{
 		audiobuffer.clear();
@@ -25,7 +25,7 @@ public :
 		if (origin + bufferToAdd.getNumSamples() > audiobuffer.getNumSamples())
 		{
 			//handle overflow
-			for (size_t i = 0; i < audiobuffer.getNumChannels(); i++)
+			for (int i = 0; i < audiobuffer.getNumChannels(); i++)
 			{
 				int nbSamplesToWrite = audiobuffer.getNumSamples() - origin;
 				//first 
@@ -36,7 +36,7 @@ public :
 		}
 		else
 		{
-			for (size_t i = 0; i < audiobuffer.getNumChannels(); i++)
+			for (int i = 0; i < audiobuffer.getNumChannels(); i++)
 			{
 				audiobuffer.copyFrom(i, origin, bufferToAdd.getReadPointer(i), bufferToAdd.getNumSamples());
 			}
@@ -81,7 +81,7 @@ public :
 	Type getRMSLevel()
 	{
 		Type mean = 0;
-		for (size_t i = 0; i < audiobuffer.getNumChannels(); i++) 
+		for (int i = 0; i < audiobuffer.getNumChannels(); i++) 
 		{
 			mean += audiobuffer.getRMSLevel(0, 0, size);
 		}
