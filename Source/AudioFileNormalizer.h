@@ -48,6 +48,7 @@ protected :
                 writer->flush();
             }
             else { // should never happen
+                jassertfalse;
                 break;
             }
         } while (samplesTreated < newSource->getTotalLength());
