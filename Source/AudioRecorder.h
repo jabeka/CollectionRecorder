@@ -211,8 +211,7 @@ public:
         {
             // not muted, send input to output
             for (int i = 0; i < numOutputChannels; ++i)
-                for (int j = 0; j < numSamples; j++)
-                    outputChannelData[i][j] = inputChannelData[i][j];
+                FloatVectorOperations::copy(outputChannelData[i], inputChannelData[i], numSamples);
         }
         else
         {

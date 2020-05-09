@@ -92,7 +92,7 @@ public:
        recorder.initialize(
            applicationProperties.getUserSettings()->getValue("folder"),
            (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format", 1),
-           (float)applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.02),
+           (float)applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.01),
            (float)applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2)
        );
 
@@ -175,7 +175,7 @@ public:
 #endif
 
         props->setValue("folder", folderPath);
-        props->setValue("RMSThreshold", 0.02);
+        props->setValue("RMSThreshold", 0.01);
         props->setValue("silenceLength", 2);
         props->setValue("disableOutput", false);
 

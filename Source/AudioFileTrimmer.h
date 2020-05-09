@@ -24,16 +24,10 @@ public:
                 bufferSize;
             newSource->getNextAudioBlock(channelInfo);
 
-            for (int j = 0; j < channelInfo.numSamples; ++j) 
+            for (int i = 0; i < channelInfo.numSamples; ++i) 
             {
-                float max = 0;
-                for (int i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
-                {
-                    // max of the channels
-                    max = jmax(max, std::abs(channelInfo.buffer->getSample(i, j)));
-                }
                 // count the nb of silence sample at the beginning of the file
-                if (std::abs(max) < silenceThreshold)
+                if (channelInfo.buffer->getMagnitude(i, 1) < silenceThreshold)
                 {
                     ++nbBeginingZeroSamples;
                 }
@@ -54,16 +48,10 @@ public:
                 bufferSize;
             newSource->setNextReadPosition(newSource->getTotalLength() - (samplesTreated + channelInfo.numSamples));
             newSource->getNextAudioBlock(channelInfo);
-            for (int j = channelInfo.buffer->getNumSamples() - 1; j >= 0; --j) // backwards
+            for (int i = channelInfo.numSamples - 1; i >= 0; --i) // backwards
             {
-                float max = 0;
-                for (int i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
-                {
-                    // max of the channels
-                    max = jmax(max, std::abs(channelInfo.buffer->getSample(i, j)));
-                }
                 // count the nb of silence sample at the beginning of the file
-                if (max < silenceThreshold)
+                if (channelInfo.buffer->getMagnitude(i, 1) < silenceThreshold)
                 {
                     ++nbEndingZeroSamples;
                 }
