@@ -46,6 +46,10 @@ public:
             {
                 copy.moveFileTo(copy.getFullPathName().replace(tempExtension, "", false));
             }
+            else
+            {
+                jassertfalse;
+            }
         }
     }
 protected:
