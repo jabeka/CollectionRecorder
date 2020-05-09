@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "AudioFileNormalizer.h"
 #include "AudioFileTrimmer.h"
+#include "CircularBuffer.h"
 
 class AudioRecorder
     : public AudioIODeviceCallback,
@@ -33,6 +34,7 @@ public:
         {
             applyPostRecordTreatment(currentFile);
         }
+        delete memoryBuffer;
     }
 
     void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThreshold, float silenceLength)
@@ -101,7 +103,7 @@ public:
 
                     // Now we'll create one of these helper objects which will act as a FIFO buffer, and will
                     // write the data to disk on our background thread.
-                    threadedWriter.reset(new AudioFormatWriter::ThreadedWriter(writer, backgroundThread, 32768));
+                    threadedWriter.reset(new AudioFormatWriter::ThreadedWriter(writer, backgroundThread, silenceTimeThreshold + 1));  // silenceTimeThreshold to be able to write all the memory buffer once
 
                     // Reset our recording thumbnail
                     thumbnail.reset(writer->getNumChannels(), writer->getSampleRate());
@@ -139,7 +141,9 @@ public:
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
         sampleRate = device->getCurrentSampleRate();
+        silenceTimeThreshold = sampleRate * silenceLength;
         bitDepth = device->getCurrentBitDepth();
+        memoryBuffer = new CircularBuffer<float>(2, silenceTimeThreshold);
     }
 
     void audioDeviceStopped() override
@@ -153,7 +157,6 @@ public:
         int numSamples) override
     {
         const ScopedLock sl(writerLock);
-        silenceThreshold = (sampleRate / numSamples) * silenceLength;
 
         // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
         AudioBuffer<float> buffer(const_cast<float**> (inputChannelData), numInputChannels, numSamples);
@@ -161,32 +164,42 @@ public:
 
         if (activeWriter.load() != nullptr)
         {
-            if (isSilence && RMSAaverageLevel > RMSThreshold)
+            handleLevel(buffer);
+            if (shouldWriteMemory)
             {
-                isSilence = false;
+                // take back, write the buffer history
+                //activeWriter.load()->write(memoryBuffer);
+                AudioBuffer<float> tempBuffer(numInputChannels, memoryBuffer->getSize());
+                for (size_t i = 0; i < numInputChannels; i++)
+                {
+                    // first from origin to the end
+                    tempBuffer.copyFrom(i, 0, memoryBuffer->getRaw(), i, memoryBuffer->getOrigin(), memoryBuffer->getSize() - memoryBuffer->getOrigin());
+                    // then from 0 to origin
+                    tempBuffer.copyFrom(i, memoryBuffer->getSize() - memoryBuffer->getOrigin(), memoryBuffer->getRaw(), i, 0, memoryBuffer->getOrigin());
+                }
+                
+                activeWriter.load()->write(tempBuffer.getArrayOfReadPointers(), memoryBuffer->getSize());
             }
 
             if (!isSilence)
             {
-                activeWriter.load()->write(inputChannelData, numSamples);
-                detectSilence(buffer, numInputChannels, numSamples);
-                // clip detection
-                for (int i = 0; i < numInputChannels; ++i)
+                if (!shouldWriteMemory) { // todo : record strhaight away
+                    activeWriter.load()->write(inputChannelData, numSamples);
+                }
+                else
                 {
-                    for (int j = 0; j < numSamples; ++j)
-                    {
-                        if (inputChannelData[i][j] > 0.99)
-                        {
-                            clip = true;
-                            startTimer(200);
-                            goto endLoop;
-                        }
-                    }
+                    shouldWriteMemory = false; // already copied with the rest of the circular buffer
+                }
+
+                // clip detection
+                if (buffer.getMagnitude(0, numSamples) > 0.99)
+                {
+                    clip = true;
+                    startTimer(200);
                 }
             }
         }
 
-    endLoop:
         // handle display
         if (!isSilence && numInputChannels >= thumbnail.getNumChannels())
         {
@@ -196,6 +209,7 @@ public:
 
         if (numInputChannels == numOutputChannels && !muted)
         {
+            // not muted, send input to output
             for (int i = 0; i < numOutputChannels; ++i)
                 for (size_t j = 0; j < numSamples; j++)
                     outputChannelData[i][j] = inputChannelData[i][j];
@@ -292,22 +306,23 @@ private:
         RMSAaverageLevel /= numInputChannels;
     }
 
-    void detectSilence(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+    void handleLevel(const AudioBuffer<float>& buffer)
     {
-        if (RMSAaverageLevel < RMSThreshold)
+        memoryBuffer->push(buffer);
+        if (memoryBuffer->isBufferFull())
         {
-            silenceCount++;
-        }
-        else
-        {
-            silenceCount = 0;
-        }
-
-        if (silenceCount > silenceThreshold) {
-            silenceCount = 0;
-            // restart
-            isSilence = true;
-            shouldRestart = true;
+            float rmsLevel = memoryBuffer->getRMSLevel();
+            if (!isSilence && rmsLevel < RMSThreshold)
+            {
+                // restart
+                isSilence = true;
+                shouldRestart = true;
+            }
+            else if(isSilence && rmsLevel > RMSThreshold)
+            {
+                isSilence = false;
+                shouldWriteMemory = true;
+            }
         }
     }
 
@@ -334,10 +349,12 @@ private:
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter{ nullptr };
     std::atomic<bool> muted = false;
     std::atomic<float> RMSThreshold;
-    std::atomic<float> silenceLength;
+    std::atomic<bool> shouldWriteMemory = false;
+    CircularBuffer<float> *memoryBuffer;
+
+    float silenceLength;
     float RMSAaverageLevel = 0;
-    int silenceCount = 0;
-    int silenceThreshold = 10000;
+    int silenceTimeThreshold = 10000;
     bool isSilence = true;
     int currentFileNumber = 0;
 };

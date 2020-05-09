@@ -1850,6 +1850,7 @@
     <ClInclude Include="..\..\Source\AudioFileTrimmer.h" />
     <ClInclude Include="..\..\Source\AudioRecorder.h" />
     <ClInclude Include="..\..\Source\AudioSplitRecorder.h" />
+    <ClInclude Include="..\..\Source\CircularBuffer.h" />
     <ClInclude Include="..\..\Source\DemoUtilities.h" />
     <ClInclude Include="..\..\Source\AudioLiveScrollingDisplay.h" />
     <ClInclude Include="..\..\Source\AudioFileNormalizer.h" />

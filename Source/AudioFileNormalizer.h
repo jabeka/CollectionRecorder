@@ -14,35 +14,43 @@ protected :
         newSource->prepareToPlay(bufferSize, reader->sampleRate);
         newSource->setLooping(false);
         // first read once the file to get max amplitude sample
-        double max = 0;
-        double min = 0;
+        float max = 0;
+        int samplesTreated = 0;
         do
         {
+            channelInfo.numSamples = ((int64)samplesTreated + bufferSize) > newSource->getTotalLength() ?
+                newSource->getTotalLength() - samplesTreated :
+                bufferSize;
+
             newSource->getNextAudioBlock(channelInfo);
-            for (size_t i = 0; i < channelInfo.buffer->getNumChannels(); i++)
-            {
-                for (size_t j = 0; j < channelInfo.buffer->getNumSamples(); j++)
-                {
-                    double sample = channelInfo.buffer->getSample(i, j);
-                    max = jmax(sample, max);
-                    min = jmin(sample, min);
-                }
-            }
-        } while (newSource->getNextReadPosition() <= newSource->getTotalLength());
+            // get the magnitude of the buffer and compare to the max we have
+            max = jmax(channelInfo.buffer->getMagnitude(0, channelInfo.numSamples), max);
+            samplesTreated += channelInfo.numSamples;
+        } while (samplesTreated < newSource->getTotalLength());
+
         // determine normalization factor
-        double factor = 0.99 / jmax(max, std::abs(min));
+        double factor = 0.99f / max;
         
         // reset play head
-        newSource->setNextReadPosition(0); 
+        newSource->setNextReadPosition(0);
+        samplesTreated = 0;
 
         /// now reread the file, apply gain on the temp buffer and write it to the temp file
         do
         {
+            channelInfo.numSamples = ((int64)samplesTreated + bufferSize) > newSource->getTotalLength() ?
+                newSource->getTotalLength() - samplesTreated :
+                bufferSize;
             newSource->getNextAudioBlock(channelInfo);
-            channelInfo.buffer->applyGain(factor);
-            writer->writeFromAudioSampleBuffer(*channelInfo.buffer, channelInfo.startSample, channelInfo.numSamples);
-            writer->flush();
-        } while (newSource->getNextReadPosition() <= newSource->getTotalLength());        
+            channelInfo.buffer->applyGain(0, channelInfo.numSamples, factor);
+            if (writer->writeFromAudioSampleBuffer(*channelInfo.buffer, channelInfo.startSample, channelInfo.numSamples)) {
+                samplesTreated += channelInfo.numSamples;
+                writer->flush();
+            }
+            else { // should never happen
+                break;
+            }
+        } while (samplesTreated < newSource->getTotalLength());
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioFileNormalizer)
