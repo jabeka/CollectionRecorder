@@ -16,11 +16,16 @@ public:
 
         double nbBeginingZeroSamples = 0, nbEndingZeroSamples = 0;
         bool isbeginningSilence = true, isEndingSilence = true;
+        int samplesTreated = 0;
         // first read once the file to know nb of samples to trim, from the begining
         do
         {
+            channelInfo.numSamples = (samplesTreated + bufferSize) > newSource->getTotalLength() ?
+                newSource->getTotalLength() - samplesTreated :
+                bufferSize;
             newSource->getNextAudioBlock(channelInfo);
-            for (int j = channelInfo.buffer->getNumSamples() - 1; j >= 0; --j) // backwards
+
+            for (int j = 0; j < 0; ++j) // backwards
             {
                 float max = 0;
                 for (size_t i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
@@ -38,15 +43,17 @@ public:
                     goto endLoop1;
                 }
             }
-        } while (newSource->getNextReadPosition() <= newSource->getTotalLength()); // should never reach
+            samplesTreated += channelInfo.numSamples;
+        } while (samplesTreated < newSource->getTotalLength());
     endLoop1:
-
-            // reset play head pos
-        newSource->setNextReadPosition(newSource->getTotalLength() - bufferSize);
-
         // read once the file backwards to samples to trim from the end
+        samplesTreated = 0;
         do
         {
+            channelInfo.numSamples = (samplesTreated + bufferSize) > newSource->getTotalLength() ?
+                newSource->getTotalLength() - samplesTreated :
+                bufferSize;
+            newSource->setNextReadPosition(newSource->getTotalLength() - (samplesTreated + channelInfo.numSamples));
             newSource->getNextAudioBlock(channelInfo);
             for (int j = channelInfo.buffer->getNumSamples() - 1; j >= 0; --j) // backwards
             {
@@ -68,7 +75,8 @@ public:
             }
             // reset play head pos
             newSource->setNextReadPosition(newSource->getNextReadPosition() - (2 * bufferSize));
-        } while (newSource->getNextReadPosition() >= 0); // backwards
+            samplesTreated += channelInfo.numSamples;
+        } while (samplesTreated < newSource->getTotalLength());
     endLoop2:
 
         // let at least one sample to 0
@@ -76,15 +84,24 @@ public:
         nbEndingZeroSamples = nbEndingZeroSamples > 1 ? nbEndingZeroSamples - 1 : 0;
 
         // reset play head
-        newSource->setNextReadPosition(nbBeginingZeroSamples );
-
+        newSource->setNextReadPosition(nbBeginingZeroSamples);
+        samplesTreated = 0;
+        int finalFileSize = newSource->getTotalLength() - (nbBeginingZeroSamples + nbEndingZeroSamples);
         /// now reread the file and write it to the temp file, but start and stop before/after the silencess
         do
         {
+            channelInfo.numSamples = (samplesTreated + bufferSize) > finalFileSize ?
+                finalFileSize - samplesTreated :
+                bufferSize;
             newSource->getNextAudioBlock(channelInfo);
-            writer->writeFromAudioSampleBuffer(*channelInfo.buffer, channelInfo.startSample, channelInfo.numSamples);
-            writer->flush();
-        } while (newSource->getNextReadPosition() <= newSource->getTotalLength() - nbEndingZeroSamples);
+            if (writer->writeFromAudioSampleBuffer(*channelInfo.buffer, channelInfo.startSample, channelInfo.numSamples)) {
+                samplesTreated += channelInfo.numSamples;
+                writer->flush();
+            }
+            else { // should never happen
+                break;
+            }
+        } while (samplesTreated < finalFileSize);
         
     }
 private:
