@@ -4,6 +4,7 @@
 #include "AudioFileNormalizer.h"
 #include "AudioFileTrimmer.h"
 #include "CircularBuffer.h"
+#include "PostRecordJob.h"
 
 class AudioRecorder
     : public AudioIODeviceCallback,
@@ -21,6 +22,7 @@ public:
         : thumbnail(thumbnailToUpdate)
     {
         backgroundThread.startThread();
+        formatManager.registerBasicFormats();
     }
 
     ~AudioRecorder() override
@@ -64,9 +66,22 @@ public:
         stop();
         if (shouldRestart) // it means we've ended a file , should do post-record treatment
         {
-            ThreadPool pool;
             postRecordFile = currentFile;
-            pool.addJob([this]() { applyPostRecordTreatment(); });            
+            if (postRecordFile.existsAsFile())
+            {
+                PostRecordJob* job =
+                    new PostRecordJob(
+                        postRecordFile.getFileName(), 
+                        postRecordFile,
+                        normalize,
+                        trim,
+                        removeChunks,
+                        &formatManager,
+                        RMSThreshold,
+                        sampleRate,
+                        chunkMaxSize);
+                pool.addJob((ThreadPoolJob*)job, true);
+            }
         }
         currentFile = getNextFile();
         currentFileNumber++;
@@ -334,11 +349,26 @@ private:
 
     void applyPostRecordTreatment()
     {
-        AudioFileNormalizer normalizer(postRecordFile);
-        normalizer.process();
-
-        AudioFileTrimer trimer(postRecordFile, RMSThreshold);
-        trimer.process();
+        if (normalize)
+        {
+            AudioFileNormalizer normalizer(postRecordFile);
+            normalizer.process();
+        }
+        if (trim) {
+            AudioFileTrimer trimer(postRecordFile, RMSThreshold);
+            trimer.process();
+        }
+        if (removeChunks) {
+            AudioFormatReader* reader = formatManager.createReaderFor(postRecordFile);
+            if (reader->lengthInSamples < chunkMaxSize * sampleRate) {
+                postRecordFile.deleteFile();
+                delete reader;
+            }
+            else 
+            {
+                delete reader;
+            }
+        }
     }
 
     void writeMemoryIntoFile() {
@@ -384,4 +414,8 @@ private:
     bool trim;
     bool removeChunks;
     int chunkMaxSize;
+    AudioFormatManager formatManager;
+    ThreadPool pool;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioRecorder);
 };
