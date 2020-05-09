@@ -216,7 +216,7 @@ private:
    #endif
 
     // components
-    RecordingThumbnail recordingThumbnail;
+    RecordingThumbnail    recordingThumbnail;
     AudioRecorder         recorder{ recordingThumbnail.getAudioThumbnail() };
     TextButton            muteButton;
     TextButton            clipLabel;
@@ -244,7 +244,7 @@ private:
 
         recorder.startRecording ();
 
-        recordingThumbnail.setDisplayFullThumbnail (false);
+        recordingThumbnail.repaint();
 
         startTimer(1);
     }
