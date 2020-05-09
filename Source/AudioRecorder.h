@@ -144,6 +144,7 @@ public:
         silenceTimeThreshold = (int)(sampleRate * silenceLength);
         bitDepth = device->getCurrentBitDepth();
         memoryBuffer = new CircularBuffer<float>(2, silenceTimeThreshold);
+        tempBuffer = AudioBuffer<float> (memoryBuffer->getNumChannels(), memoryBuffer->getSize());
     }
 
     void audioDeviceStopped() override
@@ -167,23 +168,13 @@ public:
             handleLevel(buffer);
             if (shouldWriteMemory)
             {
-                // take back, write the buffer history
-                //activeWriter.load()->write(memoryBuffer);
-                AudioBuffer<float> tempBuffer(numInputChannels, memoryBuffer->getSize());
-                for (int i = 0; i < numInputChannels; i++)
-                {
-                    // first from origin to the end
-                    tempBuffer.copyFrom(i, 0, memoryBuffer->getRaw(), i, memoryBuffer->getOrigin(), memoryBuffer->getSize() - memoryBuffer->getOrigin());
-                    // then from 0 to origin
-                    tempBuffer.copyFrom(i, memoryBuffer->getSize() - memoryBuffer->getOrigin(), memoryBuffer->getRaw(), i, 0, memoryBuffer->getOrigin());
-                }
-                
-                activeWriter.load()->write(tempBuffer.getArrayOfReadPointers(), memoryBuffer->getSize());
+                writeMemoryIntoFile();
             }
 
             if (!isSilence)
             {
-                if (!shouldWriteMemory) { // todo : record strhaight away
+                if (!shouldWriteMemory)
+                {
                     activeWriter.load()->write(inputChannelData, numSamples);
                 }
                 else
@@ -334,6 +325,20 @@ private:
         trimer.process();
     }
 
+    void writeMemoryIntoFile() {
+        // take back, write the buffer history
+        //activeWriter.load()->write(memoryBuffer);
+        for (int i = 0; i < memoryBuffer->getNumChannels(); i++)
+        {
+            // first from origin to the end
+            tempBuffer.copyFrom(i, 0, memoryBuffer->getRaw(), i, memoryBuffer->getOrigin(), memoryBuffer->getSize() - memoryBuffer->getOrigin());
+            // then from 0 to origin
+            tempBuffer.copyFrom(i, memoryBuffer->getSize() - memoryBuffer->getOrigin(), memoryBuffer->getRaw(), i, 0, memoryBuffer->getOrigin());
+        }
+
+        activeWriter.load()->write(tempBuffer.getArrayOfReadPointers(), memoryBuffer->getSize());
+    }
+
     String currentFolder;
     File currentFile;
     SupportedAudioFormat selectedFormat;
@@ -350,6 +355,7 @@ private:
     std::atomic<float> RMSThreshold;
     std::atomic<bool> shouldWriteMemory = false;
     CircularBuffer<float> *memoryBuffer;
+    AudioBuffer<float> tempBuffer;
 
     float silenceLength;
     float RMSAaverageLevel = 0;

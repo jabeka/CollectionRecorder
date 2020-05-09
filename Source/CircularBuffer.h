@@ -98,6 +98,11 @@ public :
 		return size;
 	}
 
+	int getNumChannels()
+	{
+		return audiobuffer.getNumChannels();
+	}
+
 private :
 	AudioBuffer<Type> audiobuffer;
 	int origin;

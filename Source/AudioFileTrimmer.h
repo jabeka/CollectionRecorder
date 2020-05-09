@@ -86,6 +86,7 @@ public:
                 writer->flush();
             }
             else { // should never happen
+                jassertfalse;
                 break;
             }
         } while (samplesTreated < finalFileSize);
