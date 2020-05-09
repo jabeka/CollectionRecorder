@@ -14,21 +14,20 @@ public:
         newSource->prepareToPlay(bufferSize, reader->sampleRate);
         newSource->setLooping(false);
 
-        double nbBeginingZeroSamples = 0, nbEndingZeroSamples = 0;
-        bool isbeginningSilence = true, isEndingSilence = true;
+        int nbBeginingZeroSamples = 0, nbEndingZeroSamples = 0;
         int samplesTreated = 0;
         // first read once the file to know nb of samples to trim, from the begining
         do
         {
-            channelInfo.numSamples = (samplesTreated + bufferSize) > newSource->getTotalLength() ?
-                newSource->getTotalLength() - samplesTreated :
+            channelInfo.numSamples = (samplesTreated + bufferSize) > (int)newSource->getTotalLength() ?
+                (int)newSource->getTotalLength() - samplesTreated :
                 bufferSize;
             newSource->getNextAudioBlock(channelInfo);
 
-            for (int j = 0; j < 0; ++j) // backwards
+            for (int j = 0; j < channelInfo.numSamples; ++j) 
             {
                 float max = 0;
-                for (size_t i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
+                for (int i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
                 {
                     // max of the channels
                     max = jmax(max, std::abs(channelInfo.buffer->getSample(i, j)));
@@ -44,21 +43,21 @@ public:
                 }
             }
             samplesTreated += channelInfo.numSamples;
-        } while (samplesTreated < newSource->getTotalLength());
+        } while (samplesTreated < (int)newSource->getTotalLength());
     endLoop1:
         // read once the file backwards to samples to trim from the end
         samplesTreated = 0;
         do
         {
-            channelInfo.numSamples = (samplesTreated + bufferSize) > newSource->getTotalLength() ?
-                newSource->getTotalLength() - samplesTreated :
+            channelInfo.numSamples = (samplesTreated + bufferSize) > (int)newSource->getTotalLength() ?
+                (int)newSource->getTotalLength() - samplesTreated :
                 bufferSize;
             newSource->setNextReadPosition(newSource->getTotalLength() - (samplesTreated + channelInfo.numSamples));
             newSource->getNextAudioBlock(channelInfo);
             for (int j = channelInfo.buffer->getNumSamples() - 1; j >= 0; --j) // backwards
             {
                 float max = 0;
-                for (size_t i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
+                for (int i = 0; i < channelInfo.buffer->getNumChannels(); ++i)
                 {
                     // max of the channels
                     max = jmax(max, std::abs(channelInfo.buffer->getSample(i, j)));
@@ -86,7 +85,7 @@ public:
         // reset play head
         newSource->setNextReadPosition(nbBeginingZeroSamples);
         samplesTreated = 0;
-        int finalFileSize = newSource->getTotalLength() - (nbBeginingZeroSamples + nbEndingZeroSamples);
+        int finalFileSize = (int)newSource->getTotalLength() - (nbBeginingZeroSamples + nbEndingZeroSamples);
         /// now reread the file and write it to the temp file, but start and stop before/after the silencess
         do
         {
