@@ -38,12 +38,24 @@ public:
         delete memoryBuffer;
     }
 
-    void initialize(String folder, AudioRecorder::SupportedAudioFormat format, float rmsThres, float silenceLen)
+    void initialize(String folder,
+        AudioRecorder::SupportedAudioFormat format,
+        float rmsThres,
+        float silenceLen,
+        bool normalize,
+        bool trim,
+        bool removeChunks,
+        int chunkMaxSize
+        )
     {
         currentFolder = folder;
         selectedFormat = format;
         RMSThreshold = rmsThres;
         silenceLength = silenceLen;
+        this->normalize = normalize;
+        this->trim = trim;
+        this->removeChunks = removeChunks;
+        this->chunkMaxSize = chunkMaxSize;
     }
 
     //==============================================================================
@@ -367,4 +379,9 @@ private:
     int silenceTimeThreshold = 10000;
     bool isSilence = true;
     int currentFileNumber = 0;
+
+    bool normalize;
+    bool trim;
+    bool removeChunks;
+    int chunkMaxSize;
 };

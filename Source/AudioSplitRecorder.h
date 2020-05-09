@@ -93,7 +93,11 @@ public:
            applicationProperties.getUserSettings()->getValue("folder"),
            (AudioRecorder::SupportedAudioFormat)applicationProperties.getUserSettings()->getIntValue("format", 1),
            (float)applicationProperties.getUserSettings()->getDoubleValue("RMSThreshold", 0.01),
-           (float)applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2)
+           (float)applicationProperties.getUserSettings()->getDoubleValue("silenceLength", 2),
+           applicationProperties.getUserSettings()->getBoolValue("normalize", true),
+           applicationProperties.getUserSettings()->getBoolValue("trim", true),
+           applicationProperties.getUserSettings()->getBoolValue("removeChunks", true),
+           applicationProperties.getUserSettings()->getIntValue("chunkMaxSize", 10)
        );
 
        nbOutChannels =
@@ -178,6 +182,10 @@ public:
         props->setValue("RMSThreshold", 0.01);
         props->setValue("silenceLength", 2);
         props->setValue("disableOutput", false);
+        props->setValue("normalize", true);
+        props->setValue("trim", true);
+        props->setValue("removeChunks", true);
+        props->setValue("chunkMaxSize", 10);
 
         props->save();
         props->reload();
