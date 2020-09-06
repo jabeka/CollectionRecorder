@@ -29,15 +29,8 @@ public:
     ~AudioRecorder() override
     {
         stop();
-        if (isSilence)
-        {
-            currentFile.deleteFile();
-        }
-        else
-        {
-            postRecordFile = currentFile;
-            applyPostRecordTreatment();
-        }
+        applyPostRecordTreatment();
+        
         delete memoryBuffer;
     }
 
@@ -66,30 +59,15 @@ public:
         stop();
         if (shouldRestart) // it means we've ended a file , should do post-record treatment
         {
-            postRecordFile = currentFile;
-            if (postRecordFile.existsAsFile())
-            {
-                PostRecordJob *job =
-                    new PostRecordJob(
-                        postRecordFile.getFileName(),
-                        postRecordFile,
-                        normalize,
-                        trim,
-                        removeChunks,
-                        &formatManager,
-                        RMSThreshold,
-                        sampleRate,
-                        chunkMaxSize);
-                pool.addJob((ThreadPoolJob *)job, true);
-            }
+            applyPostRecordTreatment();
         }
         currentFile = getNextFile();
-        currentFileNumber++;
+        //currentFileNumber++;
 
         if (sampleRate > 0)
         {
             // Create an OutputStream to write to our destination file...
-            currentFile.deleteFile();
+        //    currentFile.deleteFile();
 
             if (auto fileStream = std::unique_ptr<FileOutputStream>(currentFile.createOutputStream()))
             {
@@ -273,7 +251,7 @@ public:
         {
             stop();
             currentFile.deleteFile();
-            currentFileNumber--;
+          //  currentFileNumber--;
             startRecording();
         }
     }
@@ -301,8 +279,9 @@ private:
         default:
             break;
         }
-
-        if (currentFileNumber == 0)
+        
+        currentFileNumber = 0;
+        //if (currentFileNumber == 0)
         {
             File file;
             do
@@ -347,28 +326,19 @@ private:
 
     void applyPostRecordTreatment()
     {
-        if (normalize)
+        postRecordFile = currentFile;
+        if (postRecordFile.existsAsFile())
         {
-            AudioFileNormalizer normalizer(postRecordFile);
-            normalizer.process();
-        }
-        if (trim)
-        {
-            AudioFileTrimer trimer(postRecordFile, RMSThreshold);
-            trimer.process();
-        }
-        if (removeChunks)
-        {
-            AudioFormatReader *reader = formatManager.createReaderFor(postRecordFile);
-            if (reader->lengthInSamples < chunkMaxSize * sampleRate)
-            {
-                postRecordFile.deleteFile();
-                delete reader;
-            }
-            else
-            {
-                delete reader;
-            }
+            PostRecordJob *job =
+                new PostRecordJob(
+                    postRecordFile,
+                    normalize,
+                    trim,
+                    removeChunks,
+                    &formatManager,
+                    RMSThreshold,
+                    chunkMaxSize);
+            pool.addJob((ThreadPoolJob *)job, true);
         }
     }
 
@@ -400,7 +370,7 @@ private:
 
     CriticalSection writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter *> activeWriter{nullptr};
-    std::atomic<bool> muted{false};
+    std::atomic<bool> muted{true};
     std::atomic<float> RMSThreshold;
     std::atomic<bool> shouldWriteMemory{false};
     CircularBuffer<float> *memoryBuffer;

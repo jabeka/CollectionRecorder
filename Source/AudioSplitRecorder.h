@@ -49,7 +49,6 @@
 
 #include <JuceHeader.h>
 #include "AudioLiveScrollingDisplay.h"
-//#include "DemoUtilities.h"
 #include "RecordingThumbnail.h"
 #include "AudioRecorder.h"
 
@@ -59,7 +58,7 @@ class AudioSplitRecorder  : public Component,
 {
 public:
     AudioSplitRecorder()
-        : muteButton("mute"),
+        : muteButton("unmute"),
           clipLabel("CLIP"),
           choseDestFolderButton("destination"),
           formatComboBox("formatComboBox")
@@ -193,7 +192,7 @@ public:
 
     void paint (Graphics& g) override
     {
-        g.fillAll (Colour::fromRGB(69, 91, 255));
+        g.fillAll (Colours::darkgrey);
     }
 
     void resized() override
@@ -246,7 +245,7 @@ private:
 
         recordingThumbnail.repaint();
 
-        startTimer(1);
+        startTimer(10);
     }
 
     void timerCallback() override
