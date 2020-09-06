@@ -1,6 +1,8 @@
 {
     "files.associations": {
-        "atomic": "cpp"
+        "atomic": "cpp",
+        "*.mm": "cpp",
+        "typeinfo": "cpp"
     },
     "C_Cpp.intelliSenseEngineFallback": "Enabled"
 }
