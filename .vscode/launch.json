@@ -8,13 +8,15 @@
             "name": "(gdb) Lancer",
             "type": "cppdbg",
             "request": "launch",
-            "program": "CollectionRecorder",
+            "program": "${workspaceRoot}/Builds/LinuxMakefile/build/AudioRecordingDemo",
+            "preLaunchTask": "build_release",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
             "setupCommands": [
                 {
                     "description": "Activer l'impression en mode Pretty pour gdb",
