@@ -53,7 +53,7 @@ public:
         this->chunkMaxSize = chunkMaxSize;
     }
 
-    AudioFormat* getAudioFormat()
+    AudioFormat *getAudioFormat()
     {
         switch (selectedFormat)
         {
@@ -70,6 +70,27 @@ public:
             break;
         }
         return nullptr;
+    }
+
+    void GetSupportedBitDepth(AudioFormat *audioFormat)
+    {
+        if (!audioFormat->getPossibleBitDepths().contains(bitDepth))
+        {
+            switch (bitDepth)
+            {
+            case 32:
+            case 24:
+                if (audioFormat->getPossibleBitDepths().contains(24))
+                {
+                    bitDepth = 24;
+                    break;
+                }
+            case 16:
+            default:
+                bitDepth = 16;
+                break;
+            }
+        }
     }
 
     //==============================================================================
@@ -90,23 +111,7 @@ public:
             {
                 AudioFormat *audioFormat = getAudioFormat();
 
-                if (!audioFormat->getPossibleBitDepths().contains(bitDepth))
-                {
-                    switch (bitDepth)
-                    {
-                    case 32:
-                    case 24:
-                        if (audioFormat->getPossibleBitDepths().contains(24))
-                        {
-                            bitDepth = 24;
-                            break;
-                        }
-                    case 16:
-                    default:
-                        bitDepth = 16;
-                        break;
-                    }
-                }
+                GetSupportedBitDepth(audioFormat);
 
                 if (auto writer = audioFormat->createWriterFor(fileStream.get(), sampleRate, 2, bitDepth, {}, 3))
                 {
