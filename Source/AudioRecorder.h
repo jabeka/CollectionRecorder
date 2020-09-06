@@ -177,7 +177,6 @@ public:
 
         // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
         AudioBuffer<float> buffer(const_cast<float **>(inputChannelData), numInputChannels, numSamples);
-        computeRMSLevel(buffer, numInputChannels, numSamples);
 
         if (activeWriter.load() != nullptr)
         {
@@ -300,17 +299,6 @@ private:
 
         return documentsDir.getNonexistentChildFile(String("Tune ") + String(currentFileNumber), extension, false);
     }
-
-    void computeRMSLevel(const AudioBuffer<float> &buffer, int numInputChannels, int numSamples)
-    {
-        RMSAaverageLevel = 0;
-        for (int i = 0; i < numInputChannels; i++)
-        {
-            RMSAaverageLevel += buffer.getRMSLevel(i, 0, numSamples);
-        }
-        RMSAaverageLevel /= numInputChannels;
-    }
-
     void handleLevel(const AudioBuffer<float> &buffer)
     {
         memoryBuffer->push(buffer);
@@ -384,7 +372,6 @@ private:
     AudioBuffer<float> tempBuffer;
 
     float silenceLength;
-    float RMSAaverageLevel = 0;
     int silenceTimeThreshold = 10000;
     bool isSilence = true;
     int currentFileNumber = 0;
