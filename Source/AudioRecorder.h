@@ -30,7 +30,7 @@ public:
     {
         stop();
         applyPostRecordTreatment();
-        
+
         delete memoryBuffer;
     }
 
@@ -53,6 +53,25 @@ public:
         this->chunkMaxSize = chunkMaxSize;
     }
 
+    AudioFormat* getAudioFormat()
+    {
+        switch (selectedFormat)
+        {
+        default:
+        case AudioRecorder::flac:
+            return new FlacAudioFormat();
+            break;
+        /*   case AudioRecorder::mp3:
+                    return new LAMEEncoderAudioFormat(File("")); // currently not supported
+                    break;
+               */
+        case AudioRecorder::wav:
+            return new WavAudioFormat();
+            break;
+        }
+        return nullptr;
+    }
+
     //==============================================================================
     void startRecording()
     {
@@ -67,26 +86,9 @@ public:
         if (sampleRate > 0)
         {
             // Create an OutputStream to write to our destination file...
-        //    currentFile.deleteFile();
-
             if (auto fileStream = std::unique_ptr<FileOutputStream>(currentFile.createOutputStream()))
             {
-
-                AudioFormat *audioFormat;
-                switch (selectedFormat)
-                {
-                default:
-                case AudioRecorder::flac:
-                    audioFormat = new FlacAudioFormat();
-                    break;
-                /*   case AudioRecorder::mp3:
-                    audioFormat = new LAMEEncoderAudioFormat(File("")); // currently not supported
-                    break;
-               */
-                case AudioRecorder::wav:
-                    audioFormat = new WavAudioFormat();
-                    break;
-                }
+                AudioFormat *audioFormat = getAudioFormat();
 
                 if (!audioFormat->getPossibleBitDepths().contains(bitDepth))
                 {
@@ -251,7 +253,7 @@ public:
         {
             stop();
             currentFile.deleteFile();
-          //  currentFileNumber--;
+            //  currentFileNumber--;
             startRecording();
         }
     }
@@ -279,7 +281,7 @@ private:
         default:
             break;
         }
-        
+
         currentFileNumber = 0;
         //if (currentFileNumber == 0)
         {
