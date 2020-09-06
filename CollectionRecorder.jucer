@@ -2,7 +2,7 @@
 
 <JUCERPROJECT name="CollectionRecorder" companyName="JBK audio" version="0.0.1"
               companyWebsite="http://jbkaudio.fr" projectType="guiapp" id="rjBwcp"
-              jucerVersion="5.4.7" companyEmail="contact@jbkaudio.fr">
+              companyEmail="contact@jbkaudio.fr" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="MDCgAh" name="CollectionRecorder">
     <GROUP id="{66B5A2F8-ED9F-F6F4-1EEA-1DBB9DF562CB}" name="Source">
       <FILE id="HIw2o9" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
@@ -69,8 +69,10 @@
     </VS2019>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile">
       <CONFIGURATIONS>
-        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="AudioRecordingDemo"/>
-        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="AudioRecordingDemo"/>
+        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="AudioRecordingDemo"
+                       linuxArchitecture="-m64"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="AudioRecordingDemo"
+                       linuxArchitecture="-m64"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
@@ -128,5 +130,6 @@
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
   <LIVE_SETTINGS>
     <WINDOWS buildEnabled="1"/>
+    <LINUX/>
   </LIVE_SETTINGS>
 </JUCERPROJECT>
