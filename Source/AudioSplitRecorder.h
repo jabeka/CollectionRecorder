@@ -49,7 +49,7 @@
 
 #include <JuceHeader.h>
 #include "AudioLiveScrollingDisplay.h"
-#include "DemoUtilities.h"
+//#include "DemoUtilities.h"
 #include "RecordingThumbnail.h"
 #include "AudioRecorder.h"
 
@@ -193,7 +193,7 @@ public:
 
     void paint (Graphics& g) override
     {
-        g.fillAll (getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground));
+        g.fillAll (Colour::fromRGB(69, 91, 255));
     }
 
     void resized() override

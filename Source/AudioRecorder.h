@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <JuceHeader.h>
 #include "AudioFileNormalizer.h"
 #include "AudioFileTrimmer.h"
@@ -8,7 +9,7 @@
 
 class AudioRecorder
     : public AudioIODeviceCallback,
-    public Timer
+      public Timer
 {
 public:
     enum SupportedAudioFormat
@@ -18,7 +19,7 @@ public:
         mp3
     };
 
-    AudioRecorder(AudioThumbnail& thumbnailToUpdate)
+    AudioRecorder(AudioThumbnail &thumbnailToUpdate)
         : thumbnail(thumbnailToUpdate)
     {
         backgroundThread.startThread();
@@ -41,14 +42,13 @@ public:
     }
 
     void initialize(String folder,
-        AudioRecorder::SupportedAudioFormat format,
-        float rmsThres,
-        float silenceLen,
-        bool normalize,
-        bool trim,
-        bool removeChunks,
-        int chunkMaxSize
-        )
+                    AudioRecorder::SupportedAudioFormat format,
+                    float rmsThres,
+                    float silenceLen,
+                    bool normalize,
+                    bool trim,
+                    bool removeChunks,
+                    int chunkMaxSize)
     {
         currentFolder = folder;
         selectedFormat = format;
@@ -69,9 +69,9 @@ public:
             postRecordFile = currentFile;
             if (postRecordFile.existsAsFile())
             {
-                PostRecordJob* job =
+                PostRecordJob *job =
                     new PostRecordJob(
-                        postRecordFile.getFileName(), 
+                        postRecordFile.getFileName(),
                         postRecordFile,
                         normalize,
                         trim,
@@ -80,7 +80,7 @@ public:
                         RMSThreshold,
                         sampleRate,
                         chunkMaxSize);
-                pool.addJob((ThreadPoolJob*)job, true);
+                pool.addJob((ThreadPoolJob *)job, true);
             }
         }
         currentFile = getNextFile();
@@ -94,16 +94,17 @@ public:
             if (auto fileStream = std::unique_ptr<FileOutputStream>(currentFile.createOutputStream()))
             {
 
-                AudioFormat* audioFormat;
+                AudioFormat *audioFormat;
                 switch (selectedFormat)
                 {
                 default:
                 case AudioRecorder::flac:
                     audioFormat = new FlacAudioFormat();
                     break;
-                case AudioRecorder::mp3:
+                /*   case AudioRecorder::mp3:
                     audioFormat = new LAMEEncoderAudioFormat(File("")); // currently not supported
                     break;
+               */
                 case AudioRecorder::wav:
                     audioFormat = new WavAudioFormat();
                     break;
@@ -133,7 +134,7 @@ public:
 
                     // Now we'll create one of these helper objects which will act as a FIFO buffer, and will
                     // write the data to disk on our background thread.
-                    threadedWriter.reset(new AudioFormatWriter::ThreadedWriter(writer, backgroundThread, silenceTimeThreshold + 1));  // silenceTimeThreshold to be able to write all the memory buffer once
+                    threadedWriter.reset(new AudioFormatWriter::ThreadedWriter(writer, backgroundThread, silenceTimeThreshold + 1)); // silenceTimeThreshold to be able to write all the memory buffer once
 
                     // Reset our recording thumbnail
                     thumbnail.reset(writer->getNumChannels(), writer->getSampleRate());
@@ -168,13 +169,13 @@ public:
     }
 
     //==============================================================================
-    void audioDeviceAboutToStart(AudioIODevice* device) override
+    void audioDeviceAboutToStart(AudioIODevice *device) override
     {
         sampleRate = (int)device->getCurrentSampleRate();
         silenceTimeThreshold = (int)(sampleRate * silenceLength);
         bitDepth = device->getCurrentBitDepth();
         memoryBuffer = new CircularBuffer<float>(2, silenceTimeThreshold);
-        tempBuffer = AudioBuffer<float> (memoryBuffer->getNumChannels(), memoryBuffer->getSize());
+        tempBuffer = AudioBuffer<float>(memoryBuffer->getNumChannels(), memoryBuffer->getSize());
     }
 
     void audioDeviceStopped() override
@@ -183,14 +184,14 @@ public:
         bitDepth = 0;
     }
 
-    void audioDeviceIOCallback(const float** inputChannelData, int numInputChannels,
-        float** outputChannelData, int numOutputChannels,
-        int numSamples) override
+    void audioDeviceIOCallback(const float **inputChannelData, int numInputChannels,
+                               float **outputChannelData, int numOutputChannels,
+                               int numSamples) override
     {
         const ScopedLock sl(writerLock);
 
         // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
-        AudioBuffer<float> buffer(const_cast<float**> (inputChannelData), numInputChannels, numSamples);
+        AudioBuffer<float> buffer(const_cast<float **>(inputChannelData), numInputChannels, numSamples);
         computeRMSLevel(buffer, numInputChannels, numSamples);
 
         if (activeWriter.load() != nullptr)
@@ -240,7 +241,6 @@ public:
             for (int i = 0; i < numOutputChannels; ++i)
                 if (outputChannelData[i] != nullptr)
                     FloatVectorOperations::clear(outputChannelData[i], numSamples);
-
         }
     }
 
@@ -278,12 +278,10 @@ public:
         }
     }
 
-
-    std::atomic<bool> shouldRestart = false;
-    std::atomic<bool> clip = false;
+    std::atomic_bool shouldRestart{false};
+    std::atomic_bool clip{false};
 
 private:
-
     File getNextFile()
     {
         auto documentsDir = File(currentFolder);
@@ -307,16 +305,17 @@ private:
         if (currentFileNumber == 0)
         {
             File file;
-            do {
+            do
+            {
                 currentFileNumber++; // begin at 1
-                file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String::String("Tune ") + String::String(currentFileNumber) + String::String(extension));
+                file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String("Tune ") + String(currentFileNumber) + String(extension));
             } while (file.exists());
         }
 
-        return documentsDir.getNonexistentChildFile(String::String("Tune ") + String::String(currentFileNumber), extension, false);
+        return documentsDir.getNonexistentChildFile(String("Tune ") + String(currentFileNumber), extension, false);
     }
 
-    void computeRMSLevel(const AudioBuffer<float>& buffer, int numInputChannels, int numSamples)
+    void computeRMSLevel(const AudioBuffer<float> &buffer, int numInputChannels, int numSamples)
     {
         RMSAaverageLevel = 0;
         for (int i = 0; i < numInputChannels; i++)
@@ -326,7 +325,7 @@ private:
         RMSAaverageLevel /= numInputChannels;
     }
 
-    void handleLevel(const AudioBuffer<float>& buffer)
+    void handleLevel(const AudioBuffer<float> &buffer)
     {
         memoryBuffer->push(buffer);
         if (memoryBuffer->isBufferFull())
@@ -338,14 +337,13 @@ private:
                 isSilence = true;
                 shouldRestart = true;
             }
-            else if(isSilence && rmsLevel > RMSThreshold)
+            else if (isSilence && rmsLevel > RMSThreshold)
             {
                 isSilence = false;
                 shouldWriteMemory = true;
             }
         }
     }
-
 
     void applyPostRecordTreatment()
     {
@@ -354,24 +352,28 @@ private:
             AudioFileNormalizer normalizer(postRecordFile);
             normalizer.process();
         }
-        if (trim) {
+        if (trim)
+        {
             AudioFileTrimer trimer(postRecordFile, RMSThreshold);
             trimer.process();
         }
-        if (removeChunks) {
-            AudioFormatReader* reader = formatManager.createReaderFor(postRecordFile);
-            if (reader->lengthInSamples < chunkMaxSize * sampleRate) {
+        if (removeChunks)
+        {
+            AudioFormatReader *reader = formatManager.createReaderFor(postRecordFile);
+            if (reader->lengthInSamples < chunkMaxSize * sampleRate)
+            {
                 postRecordFile.deleteFile();
                 delete reader;
             }
-            else 
+            else
             {
                 delete reader;
             }
         }
     }
 
-    void writeMemoryIntoFile() {
+    void writeMemoryIntoFile()
+    {
         // take back, write the buffer history
         //activeWriter.load()->write(memoryBuffer);
         for (int i = 0; i < memoryBuffer->getNumChannels(); i++)
@@ -389,18 +391,18 @@ private:
     File currentFile;
     File postRecordFile;
     SupportedAudioFormat selectedFormat;
-    AudioThumbnail& thumbnail;
-    TimeSliceThread backgroundThread{ "Audio Recorder Thread" }; // the thread that will write our audio data to disk
+    AudioThumbnail &thumbnail;
+    TimeSliceThread backgroundThread{"Audio Recorder Thread"};         // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
     int sampleRate = 0;
     int bitDepth = 0;
     int64 nextSampleNum = 0;
 
     CriticalSection writerLock;
-    std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter{ nullptr };
-    std::atomic<bool> muted = false;
+    std::atomic<AudioFormatWriter::ThreadedWriter *> activeWriter{nullptr};
+    std::atomic<bool> muted{false};
     std::atomic<float> RMSThreshold;
-    std::atomic<bool> shouldWriteMemory = false;
+    std::atomic<bool> shouldWriteMemory{false};
     CircularBuffer<float> *memoryBuffer;
     AudioBuffer<float> tempBuffer;
 
