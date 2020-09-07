@@ -282,15 +282,6 @@ private:
         default:
             break;
         }
-        /*
-        int currentFileNumber = 0;
-
-        File file;
-        do
-        {
-            currentFileNumber++; // begin at 1
-            file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String("Tune ") + String(currentFileNumber) + String(extension));
-        } while (file.exists());*/
 
         return documentsDir.getNonexistentChildFile(String("Tune "), extension, false);
     }
