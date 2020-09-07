@@ -93,7 +93,6 @@ public:
         }
     }
 
-    //==============================================================================
     void startRecording()
     {
         stop();
@@ -102,7 +101,6 @@ public:
             applyPostRecordTreatment();
         }
         currentFile = getNextFile();
-        //currentFileNumber++;
 
         if (sampleRate > 0)
         {
@@ -257,7 +255,6 @@ public:
         {
             stop();
             currentFile.deleteFile();
-            //  currentFileNumber--;
             startRecording();
         }
     }
@@ -285,19 +282,17 @@ private:
         default:
             break;
         }
+        /*
+        int currentFileNumber = 0;
 
-        currentFileNumber = 0;
-        //if (currentFileNumber == 0)
+        File file;
+        do
         {
-            File file;
-            do
-            {
-                currentFileNumber++; // begin at 1
-                file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String("Tune ") + String(currentFileNumber) + String(extension));
-            } while (file.exists());
-        }
+            currentFileNumber++; // begin at 1
+            file = File(documentsDir.getFullPathName() + File::getSeparatorChar() + String("Tune ") + String(currentFileNumber) + String(extension));
+        } while (file.exists());*/
 
-        return documentsDir.getNonexistentChildFile(String("Tune ") + String(currentFileNumber), extension, false);
+        return documentsDir.getNonexistentChildFile(String("Tune "), extension, false);
     }
     void handleLevel(const AudioBuffer<float> &buffer)
     {
@@ -374,7 +369,6 @@ private:
     float silenceLength;
     int silenceTimeThreshold = 10000;
     bool isSilence = true;
-    int currentFileNumber = 0;
 
     bool normalize;
     bool trim;
