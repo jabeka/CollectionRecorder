@@ -46,7 +46,7 @@ public:
             channelInfo.numSamples = (samplesTreated + bufferSize) > (int)newSource->getTotalLength() ?
                 (int)newSource->getTotalLength() - samplesTreated :
                 bufferSize;
-            newSource->setNextReadPosition(newSource->getTotalLength() - (samplesTreated + channelInfo.numSamples));
+            newSource->setNextReadPosition(newSource->getTotalLength() - ((juce::int64)samplesTreated + channelInfo.numSamples));
             newSource->getNextAudioBlock(channelInfo);
             for (int i = channelInfo.numSamples - 1; i >= 0; --i) // backwards
             {
@@ -61,7 +61,7 @@ public:
                 }
             }
             // reset play head pos
-            newSource->setNextReadPosition(newSource->getNextReadPosition() - (2 * bufferSize));
+            newSource->setNextReadPosition(newSource->getNextReadPosition() - ((juce::int64)2 * bufferSize));
             samplesTreated += channelInfo.numSamples;
         } while (samplesTreated < newSource->getTotalLength());
     endLoop2:

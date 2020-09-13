@@ -12,7 +12,7 @@ class AudioRecorder
       public Timer
 {
 public:
-    enum SupportedAudioFormat
+    enum class SupportedAudioFormat
     {
         wav = 0,
         flac,
@@ -58,14 +58,14 @@ public:
         switch (selectedFormat)
         {
         default:
-        case AudioRecorder::flac:
+        case SupportedAudioFormat::flac:
             return new FlacAudioFormat();
             break;
-        /*   case AudioRecorder::mp3:
+        /*   case SupportedAudioFormat::mp3:
                     return new LAMEEncoderAudioFormat(File("")); // currently not supported
                     break;
                */
-        case AudioRecorder::wav:
+        case SupportedAudioFormat::wav:
             return new WavAudioFormat();
             break;
         }
@@ -111,7 +111,7 @@ public:
 
                 GetSupportedBitDepth(audioFormat);
 
-                if (auto writer = audioFormat->createWriterFor(fileStream.get(), sampleRate, 2, bitDepth, {}, 3))
+                if (auto writer = audioFormat->createWriterFor(fileStream.get(), sampleRate, nbInputChannels, bitDepth, {}, 3))
                 {
                     fileStream.release(); // (passes responsibility for deleting the stream to the writer object that is now using it)
 
@@ -157,7 +157,8 @@ public:
         sampleRate = (int)device->getCurrentSampleRate();
         silenceTimeThreshold = (int)(sampleRate * silenceLength);
         bitDepth = device->getCurrentBitDepth();
-        memoryBuffer = new CircularBuffer<float>(2, silenceTimeThreshold);
+        nbInputChannels = device->getActiveInputChannels().toInteger();
+        memoryBuffer = new CircularBuffer<float>(nbInputChannels, silenceTimeThreshold);
         tempBuffer = AudioBuffer<float>(memoryBuffer->getNumChannels(), memoryBuffer->getSize());
     }
 
@@ -270,13 +271,13 @@ private:
         String extension = "";
         switch (selectedFormat)
         {
-        case AudioRecorder::wav:
+        case SupportedAudioFormat::wav:
             extension = ".wav";
             break;
-        case AudioRecorder::flac:
+        case SupportedAudioFormat::flac:
             extension = ".flac";
             break;
-        case AudioRecorder::mp3:
+        case SupportedAudioFormat::mp3:
             extension = ".mp3";
             break;
         default:
@@ -347,6 +348,7 @@ private:
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
     int sampleRate = 0;
     int bitDepth = 0;
+    int nbInputChannels = 0;
     int64 nextSampleNum = 0;
 
     CriticalSection writerLock;
@@ -354,7 +356,7 @@ private:
     std::atomic<bool> muted{true};
     std::atomic<float> RMSThreshold;
     std::atomic<bool> shouldWriteMemory{false};
-    CircularBuffer<float> *memoryBuffer;
+    CircularBuffer<float> *memoryBuffer = nullptr;
     AudioBuffer<float> tempBuffer;
 
     float silenceLength;

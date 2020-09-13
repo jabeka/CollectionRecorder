@@ -169,7 +169,7 @@ public:
     void setDefaultProperties()
     {
         PropertiesFile* props = applicationProperties.getUserSettings();
-        props->setValue("format", AudioRecorder::SupportedAudioFormat::flac);
+        props->setValue("format", (int)AudioRecorder::SupportedAudioFormat::flac);
 
 #if (JUCE_ANDROID || JUCE_IOS)
         auto documenfolderPathtsDir = File::getSpecialLocation(File::tempDirectory).getFullPathName() + File::getSeparatorChar() + "\ollectionRecorder";
